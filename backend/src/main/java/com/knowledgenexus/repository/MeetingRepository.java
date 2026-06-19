@@ -21,4 +21,11 @@ public interface MeetingRepository
     List<Meeting> findByCreatorId(
             UUID userId
     );
+
+    @org.springframework.data.jpa.repository.Query(
+            "select m from Meeting m where m.conversation.mentor.id = :userId or m.conversation.mentee.id = :userId"
+    )
+    List<Meeting> findAllForUser(
+            @org.springframework.data.repository.query.Param("userId") UUID userId
+    );
 }

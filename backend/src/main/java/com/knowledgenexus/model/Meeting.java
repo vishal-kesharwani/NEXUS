@@ -30,6 +30,8 @@ public class Meeting {
 
     private String meetLink;
 
+    private String googleEventId;
+
     private String status;
 
     @PrePersist

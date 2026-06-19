@@ -13,6 +13,7 @@ public class MeetingResponse {
     private UUID conversationId;
     private UUID creatorId;
     private String creatorName;
+    private UUID recipientId;
     private LocalDateTime scheduledAt;
     private String meetLink;
     private String status;

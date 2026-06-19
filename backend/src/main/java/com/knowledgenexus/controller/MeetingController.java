@@ -36,6 +36,32 @@ public class MeetingController {
         return meetingService.getMeetings(userDetails.getUsername(), conversationId);
     }
 
+    @PostMapping("/{id}/accept")
+    public MeetingResponse accept(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID id
+    ) {
+        try {
+            return meetingService.acceptMeeting(userDetails.getUsername(), id);
+        } catch (IllegalStateException ex) {
+            if ("GOOGLE_NOT_CONNECTED".equals(ex.getMessage())) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.PRECONDITION_REQUIRED,
+                        "The session organizer needs to connect their Google account before this can be accepted."
+                );
+            }
+            throw ex;
+        }
+    }
+
+    @PostMapping("/{id}/decline")
+    public MeetingResponse decline(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID id
+    ) {
+        return meetingService.declineMeeting(userDetails.getUsername(), id);
+    }
+
     @GetMapping
     public List<MeetingResponse> myMeetings(
             @AuthenticationPrincipal

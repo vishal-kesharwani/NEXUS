@@ -11,14 +11,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class MeetingService {
+
+    private static final String MEET_LINK_CHARS = "abcdefghijklmnopqrstuvwxyz";
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final MeetingRepository meetingRepository;
     private final ConversationRepository conversationRepository;
@@ -87,19 +90,17 @@ public class MeetingService {
 
 
     private String generateMeetLink() {
-        String chars = "abcdefghijklmnopqrstuvwxyz";
-        Random rnd = new Random();
-        StringBuilder sb = new StringBuilder("https://meet.google.com/");
-        for (int i = 0; i < 3; i++) {
-            sb.append(chars.charAt(rnd.nextInt(chars.length())));
-        }
-        sb.append("-");
-        for (int i = 0; i < 4; i++) {
-            sb.append(chars.charAt(rnd.nextInt(chars.length())));
-        }
-        sb.append("-");
-        for (int i = 0; i < 3; i++) {
-            sb.append(chars.charAt(rnd.nextInt(chars.length())));
+        String meetLink;
+        do {
+            meetLink = "https://meet.google.com/" + randomSegment(3) + "-" + randomSegment(4) + "-" + randomSegment(3);
+        } while (meetingRepository.existsByMeetLink(meetLink));
+        return meetLink;
+    }
+
+    private String randomSegment(int length) {
+        StringBuilder sb = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            sb.append(MEET_LINK_CHARS.charAt(RANDOM.nextInt(MEET_LINK_CHARS.length())));
         }
         return sb.toString();
     }
@@ -130,23 +131,6 @@ public class MeetingService {
                 .toList();
     }
 
-    private MeetingResponse mapToResponse(Meeting meeting) {
-
-        return MeetingResponse.builder()
-                .id(meeting.getId())
-                .conversationId(meeting.getConversation().getId())
-                .creatorId(meeting.getCreator().getId())
-                .creatorName(
-                        meeting.getCreator().getFirstName()
-                                + " "
-                                + meeting.getCreator().getLastName()
-                )
-                .scheduledAt(meeting.getScheduledAt())
-                .meetLink(meeting.getMeetLink())
-                .status(meeting.getStatus())
-                .build();
-    }
 
 
-    
 }
