@@ -226,7 +226,7 @@ export const ChatPage: React.FC = () => {
     onSuccess: () => {
       setShowScheduleModal(false);
       setScheduleDateTime('');
-      alert('Session scheduled successfully!');
+      alert('Session request sent! Waiting for the other participant to accept.');
     },
     onError: (err: any) => {
       alert(err.response?.data?.message || 'Failed to schedule session.');
@@ -495,7 +495,7 @@ export const ChatPage: React.FC = () => {
           <div className="w-full max-w-md rounded-[2rem] border border-slate-100 bg-white p-6 shadow-2xl">
             <h3 className="text-xl font-bold text-slate-900">Schedule Mentorship Session</h3>
             <p className="mt-2 text-sm text-slate-500">
-              Pick a date and time for your meeting. A mock Google Meet link will be generated automatically.
+              Pick a date and time. The other participant will need to accept before a real Google Meet link is created.
             </p>
 
             <div className="mt-4">

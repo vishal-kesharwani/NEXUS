@@ -198,6 +198,12 @@ export const meetingService = {
       '/meetings'
     ),
 
+    // ---- Add these two methods inside your existing `meetingService` object in services/api.ts ----
+// (alongside getMeetings / createMeeting, using the same `api` axios instance)
+
+  acceptMeeting: (id: string) => apiClient.post(`/meetings/${id}/accept`),
+  declineMeeting: (id: string) => apiClient.post(`/meetings/${id}/decline`),
+
   getConversationMeetings: (
     conversationId: string
   ) =>
@@ -282,5 +288,7 @@ export const aiService = {
       data
     ),
 };
+
+
 
 export default apiClient;

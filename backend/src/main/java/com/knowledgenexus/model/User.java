@@ -39,6 +39,19 @@ public class User {
 
     private String headline;
 
+// ---- Add these fields inside your existing User entity class (User.java) ----
+// Place them anywhere among the other @Column fields. Lombok's @Getter/@Setter
+// (or @Data) on the class will auto-generate the getters/setters used by
+// GoogleTokenService and GoogleAuthController.
+ 
+    @Column(length = 2048)
+    private String googleAccessToken;
+ 
+    @Column(length = 2048)
+    private String googleRefreshToken;
+ 
+    private java.time.LocalDateTime googleTokenExpiry;
+
     @Column(columnDefinition = "TEXT")
     private String bio;
 
