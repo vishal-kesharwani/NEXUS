@@ -5,6 +5,7 @@ import com.knowledgenexus.dto.SkillDto;
 import com.knowledgenexus.model.User;
 import com.knowledgenexus.model.UserSkill;
 import com.knowledgenexus.repository.UserSkillRepository;
+import com.knowledgenexus.service.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,16 @@ public class RecommendationService {
 
     private final CurrentUserService currentUserService;
     private final UserSkillRepository userSkillRepository;
+
+    // ---- Scoring weights (sum of max contributions = 100) ----
+    private static final int SKILL_MATCH_POINTS = 10;     // per shared skill
+    private static final int MAX_SKILL_POINTS   = 40;     // cap: up to 4 shared skills counted
+    private static final int EXPERIENCE_POINTS_PER_YEAR = 2;
+    private static final int MAX_EXPERIENCE_POINTS = 30;  // cap: experience contributes at most 30
+    private static final int SAME_COMPANY_POINTS = 15;
+    private static final int SAME_ROLE_POINTS    = 15;
+    private static final int MAX_POSSIBLE_SCORE =
+            MAX_SKILL_POINTS + MAX_EXPERIENCE_POINTS + SAME_COMPANY_POINTS + SAME_ROLE_POINTS; // 100
 
     public List<MentorRecommendationResponse> recommend(
             String email
@@ -40,8 +51,10 @@ public class RecommendationService {
         List<UserSkill> mentorSkills =
                 userSkillRepository.findByCanMentorTrue();
 
-        Map<User, Integer> scores =
-                new HashMap<>();
+        // Track raw (uncapped) sub-components per mentor so we can combine
+        // and cap them correctly before converting to a percentage.
+        Map<User, Integer> sharedSkillCount = new HashMap<>();
+        Set<User> mentorsSeen = new LinkedHashSet<>();
 
         for (UserSkill us : mentorSkills) {
 
@@ -51,44 +64,62 @@ public class RecommendationService {
                 continue;
             }
 
-            int score =
-                    scores.getOrDefault(mentor, 0);
+            mentorsSeen.add(mentor);
 
-            if (mySkillIds.contains(
-                    us.getSkill().getId())) {
-                score += 10;
+            if (mySkillIds.contains(us.getSkill().getId())) {
+                sharedSkillCount.merge(mentor, 1, Integer::sum);
             }
+        }
 
+        Map<User, Double> scores = new HashMap<>();
+
+        for (User mentor : mentorsSeen) {
+
+            int skillPoints = Math.min(
+                    sharedSkillCount.getOrDefault(mentor, 0) * SKILL_MATCH_POINTS,
+                    MAX_SKILL_POINTS
+            );
+
+            int experiencePoints = 0;
             if (mentor.getExperienceYears() != null) {
-                score += mentor.getExperienceYears() * 2;
+                experiencePoints = Math.min(
+                        mentor.getExperienceYears() * EXPERIENCE_POINTS_PER_YEAR,
+                        MAX_EXPERIENCE_POINTS
+                );
             }
 
+            int companyPoints = 0;
             if (currentUser.getCompany() != null
                     && mentor.getCompany() != null
                     && currentUser.getCompany()
-                    .equalsIgnoreCase(
-                            mentor.getCompany())) {
-
-                score += 5;
+                    .equalsIgnoreCase(mentor.getCompany())) {
+                companyPoints = SAME_COMPANY_POINTS;
             }
 
+            int rolePoints = 0;
             if (currentUser.getCurrentRole() != null
                     && mentor.getCurrentRole() != null
                     && currentUser.getCurrentRole()
-                    .equalsIgnoreCase(
-                            mentor.getCurrentRole())) {
-
-                score += 5;
+                    .equalsIgnoreCase(mentor.getCurrentRole())) {
+                rolePoints = SAME_ROLE_POINTS;
             }
 
-            scores.put(mentor, score);
+            int rawTotal = skillPoints + experiencePoints + companyPoints + rolePoints;
+
+            // Normalize to a true 0-100 percentage and clamp defensively.
+            double matchPercentage = Math.min(
+                    100.0,
+                    Math.max(0.0, (rawTotal / (double) MAX_POSSIBLE_SCORE) * 100.0)
+            );
+
+            scores.put(mentor, matchPercentage);
         }
 
         return scores.entrySet()
                 .stream()
                 .sorted(
                         Map.Entry
-                                .<User, Integer>comparingByValue()
+                                .<User, Double>comparingByValue()
                                 .reversed()
                 )
                 .limit(10)
@@ -103,7 +134,7 @@ public class RecommendationService {
 
     private MentorRecommendationResponse mapToResponse(
             User mentor,
-            Integer score
+            Double matchPercentage
     ) {
 
         List<SkillDto> skills =
@@ -138,18 +169,18 @@ public class RecommendationService {
                                 : null
                 )
                 .skills(skills)
-                .matchScore(score.doubleValue())
-                .reason(generateReason(score))
+                .matchScore(Math.round(matchPercentage * 10.0) / 10.0) // round to 1 decimal
+                .reason(generateReason(matchPercentage))
                 .build();
     }
 
-    private String generateReason(Integer score) {
+    private String generateReason(Double matchPercentage) {
 
-        if (score >= 25) {
+        if (matchPercentage >= 70) {
             return "Excellent match based on skills and experience";
         }
 
-        if (score >= 15) {
+        if (matchPercentage >= 40) {
             return "Good match with relevant skills";
         }
 

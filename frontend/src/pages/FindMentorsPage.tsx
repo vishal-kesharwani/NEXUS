@@ -84,7 +84,13 @@ export const FindMentorsPage: React.FC = () => {
         {mentor.matchScore != null && (
           <div className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
             <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-            {(mentor.matchScore * 100).toFixed(0)}%
+            {/*
+              NOTE: backend now returns matchScore already normalized as a
+              0-100 percentage (see RecommendationService.java fix). Do NOT
+              multiply by 100 here, or scores will be inflated 100x
+              (e.g. 48% -> 4800%). Just round and display directly.
+            */}
+            {Math.round(mentor.matchScore)}%
           </div>
         )}
       </div>
