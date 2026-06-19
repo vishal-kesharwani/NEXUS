@@ -1,6 +1,7 @@
 package com.knowledgenexus.controller;
 
 import com.knowledgenexus.model.User;
+import com.knowledgenexus.security.JwtTokenProvider;
 import com.knowledgenexus.service.CurrentUserService;
 import com.knowledgenexus.service.GoogleTokenService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,11 +22,22 @@ public class GoogleAuthController {
 
     private final GoogleTokenService googleTokenService;
     private final CurrentUserService currentUserService;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    /** Frontend redirects the browser here to start the Google consent flow. */
+    /**
+     * Frontend navigates the browser here (full page redirect, not an axios call) to start
+     * the Google consent flow. Browser navigations can't carry an Authorization header, so
+     * the JWT is passed as a query param instead and validated manually here.
+     */
     @GetMapping("/oauth/connect")
-    public void connect(@AuthenticationPrincipal UserDetails userDetails, HttpServletResponse response) throws IOException {
-        String state = Base64.getUrlEncoder().encodeToString(userDetails.getUsername().getBytes(StandardCharsets.UTF_8));
+    public void connect(@RequestParam String token, HttpServletResponse response) throws IOException {
+        if (!jwtTokenProvider.validateToken(token)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
+            return;
+        }
+
+        String email = jwtTokenProvider.getEmailFromToken(token);
+        String state = Base64.getUrlEncoder().encodeToString(email.getBytes(StandardCharsets.UTF_8));
         response.sendRedirect(googleTokenService.buildAuthUrl(state));
     }
 

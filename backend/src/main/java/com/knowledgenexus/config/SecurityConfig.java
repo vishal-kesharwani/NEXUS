@@ -45,6 +45,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/api/google/oauth/**",
                                 "/actuator/**",
                                 "/ws/**"
                         )

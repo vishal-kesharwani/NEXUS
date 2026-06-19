@@ -171,6 +171,7 @@ public class MeetingService {
                 .scheduledAt(meeting.getScheduledAt())
                 .meetLink(meeting.getMeetLink())
                 .status(meeting.getStatus())
+                .organizerGoogleConnected(creator.getGoogleRefreshToken() != null)
                 .build();
     }
 }

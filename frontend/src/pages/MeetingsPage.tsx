@@ -147,7 +147,16 @@ export const MeetingsPage: React.FC = () => {
                       </>
                     )}
 
-                    {isPending && !isRecipient && (
+                    {isPending && !isRecipient && !meeting.organizerGoogleConnected && (
+                      <a
+                        href={`${import.meta.env.VITE_BACKEND_TARGET}/api/google/oauth/connect?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
+                        className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600 shadow-sm"
+                      >
+                        Connect Google Calendar
+                      </a>
+                    )}
+
+                    {isPending && !isRecipient && meeting.organizerGoogleConnected && (
                       <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
                         <Hourglass size={16} />
                         Waiting for them to accept

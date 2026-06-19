@@ -17,4 +17,5 @@ public class MeetingResponse {
     private LocalDateTime scheduledAt;
     private String meetLink;
     private String status;
+    private boolean organizerGoogleConnected;
 }
