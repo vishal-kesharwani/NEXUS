@@ -255,14 +255,14 @@ export const ChatPage: React.FC = () => {
 
   return (
     <MainLayout>
-      <div className="h-[80vh] overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl">
-        <div className="grid h-full grid-cols-12">
+      <div className="h-[80vh] max-h-[80vh] min-h-0 overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl">
+        <div className="grid h-full min-h-0 grid-cols-12">
           {/* Sidebar */}
-          <div className="col-span-4 flex h-full flex-col border-r border-slate-200 bg-white">
-            <div className="border-b border-slate-200 p-5">
+          <div className="col-span-4 flex h-full min-h-0 flex-col overflow-hidden border-r border-slate-200 bg-white">
+            <div className="shrink-0 border-b border-slate-200 p-5">
               <h2 className="text-xl font-bold text-slate-900">Conversations</h2>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">
               {conversations.map((conversation) => {
                 const active = selectedConversation?.id === conversation.id;
                 return (
@@ -292,9 +292,9 @@ export const ChatPage: React.FC = () => {
           </div>
 
           {/* Chat Area */}
-          <div className="col-span-8 flex h-full flex-col bg-slate-50 relative">
+          <div className="col-span-8 flex h-full min-h-0 flex-col overflow-hidden bg-slate-50 relative">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-cyan-500 to-indigo-500 font-bold text-white shadow-sm">
                   {selectedName
@@ -340,7 +340,7 @@ export const ChatPage: React.FC = () => {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
               {!selectedConversation ? (
                 <div className="flex h-full flex-col items-center justify-center text-slate-400">
                   <MessageCircle size={60} />
@@ -384,7 +384,7 @@ export const ChatPage: React.FC = () => {
 
             {/* Input Bar */}
             {selectedConversation && (
-              <div className="border-t border-slate-200 bg-white p-4">
+              <div className="shrink-0 border-t border-slate-200 bg-white p-4">
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-indigo-400 focus-within:bg-white transition-all">
                   <input
                     value={message}
@@ -419,7 +419,7 @@ export const ChatPage: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
                   {/* Preset Prompt Buttons */}
                   <div className="space-y-2">
                     <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Quick Actions</h4>
