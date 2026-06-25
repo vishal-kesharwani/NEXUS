@@ -223,6 +223,10 @@ google:
   client-id: YOUR_CLIENT_ID
   client-secret: YOUR_CLIENT_SECRET
   redirect-uri: http://localhost:8080/api/google/oauth/callback
+
+
+OPENROUTER_API_KEY: sk-or-v1-8c41............................
+OPENROUTER_MODEL: openrouter/free
 ```
 
 ---
