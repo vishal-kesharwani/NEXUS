@@ -64,13 +64,26 @@ export interface UserSkill {
   userId: string;
   yearsOfExperience: number;
   canMentor: boolean;
+  selfLevel: SkillLevel;
+  selfScore: number;
+  adjustedScore: number;
+  adjustedLevel: SkillLevel;
   skill: Skill;
 }
+
+export type SkillLevel = 'BEGINNER' | 'INTERMEDIATE' | 'PRO' | 'ADVANCED' | 'SUPERIOR';
 
 export interface AddUserSkillRequest {
   skillId: string;
   yearsOfExperience: number;
   canMentor: boolean;
+  selfLevel: SkillLevel;
+}
+
+export interface UpdateUserSkillRequest {
+  yearsOfExperience?: number;
+  canMentor?: boolean;
+  selfLevel?: SkillLevel;
 }
 
 // Mentorship Types
@@ -162,6 +175,11 @@ export interface ConversationResponse {
   menteeName: string;
 
   displayName: string;
+  mentorshipRequestId?: string;
+  skillId?: string;
+  skillName?: string;
+  status?: 'ACTIVE' | 'CLOSED';
+  closedAt?: string;
 }
 
 export interface MessageResponse {
@@ -205,6 +223,9 @@ export interface ReviewResponse {
   mentorId: string;
   reviewerId: string;
   rating: number;
+  skillId?: string;
+  mentorshipRequestId?: string;
+  skillLevelRating?: SkillLevel;
   comment: string;
   createdAt: string;
 }

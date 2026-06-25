@@ -10,6 +10,7 @@ import type {
   Skill,
   UserSkill,
   AddUserSkillRequest,
+  UpdateUserSkillRequest,
   MentorAvailability,
   MentorAvailabilityRequest,
   MentorshipRequest,
@@ -79,7 +80,13 @@ export const userSkillService = {
   addSkill: (data: AddUserSkillRequest) =>
     apiClient.post<UserSkill>('/user-skills', data),
   getUserSkills: () => apiClient.get<UserSkill[]>('/user-skills/me'),
+  updateSkill: (id: string, data: UpdateUserSkillRequest) =>
+    apiClient.put<UserSkill>(`/user-skills/${id}`, data),
   deleteSkill: (id: string) => apiClient.delete(`/user-skills/${id}`),
+};
+
+export const organizationService = {
+  search: (query = '') => apiClient.get<string[]>('/organizations', { params: { query } }),
 };
 
 export const mentorAvailabilityService = {
@@ -139,6 +146,9 @@ export const chatService = {
         content,
       }
     ),
+
+  closeConversation: (conversationId: string) =>
+    apiClient.post<ConversationResponse>(`/chat/conversations/${conversationId}/close`),
 };
 
 export interface NotificationResponse {
@@ -178,9 +188,14 @@ export interface CreateMeetingRequest {
 export interface MeetingResponse {
   id: string;
   conversationId: string;
+  creatorId: string;
+  creatorName: string;
+  recipientId: string;
   scheduledAt: string;
-  meetLink: string;
+  meetLink?: string;
+  meetLinkExpiresAt?: string;
   status: string;
+  organizerGoogleConnected: boolean;
 }
 
 // Meeting service
@@ -203,6 +218,7 @@ export const meetingService = {
 
   acceptMeeting: (id: string) => apiClient.post(`/meetings/${id}/accept`),
   declineMeeting: (id: string) => apiClient.post(`/meetings/${id}/decline`),
+  removeMeetLink: (id: string) => apiClient.delete(`/meetings/${id}/link`),
 
   getConversationMeetings: (
     conversationId: string
@@ -214,7 +230,10 @@ export const meetingService = {
 
 export interface CreateReviewRequest {
   mentorId: string;
+  skillId?: string;
+  mentorshipRequestId?: string;
   rating: number;
+  skillLevelRating?: string;
   comment: string;
 }
 

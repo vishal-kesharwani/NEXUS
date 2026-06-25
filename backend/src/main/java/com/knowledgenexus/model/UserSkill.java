@@ -31,10 +31,36 @@ public class UserSkill {
     @Column(name = "can_mentor")
     private Boolean canMentor;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "self_level")
+    private SkillLevel selfLevel;
+
+    @Column(name = "self_score")
+    private Integer selfScore;
+
+    @Column(name = "adjusted_score")
+    private Double adjustedScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "adjusted_level")
+    private SkillLevel adjustedLevel;
+
     @PrePersist
     public void prePersist() {
         if (id == null) {
             id = UUID.randomUUID();
+        }
+        if (selfLevel == null) {
+            selfLevel = SkillLevel.BEGINNER;
+        }
+        if (selfScore == null) {
+            selfScore = selfLevel.score();
+        }
+        if (adjustedScore == null) {
+            adjustedScore = (double) selfScore;
+        }
+        if (adjustedLevel == null) {
+            adjustedLevel = SkillLevel.fromScore(adjustedScore);
         }
     }
 }

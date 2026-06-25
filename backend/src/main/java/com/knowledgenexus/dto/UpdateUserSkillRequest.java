@@ -1,18 +1,11 @@
 package com.knowledgenexus.dto;
 
-import lombok.Data;
 import com.knowledgenexus.model.SkillLevel;
-
-import java.util.UUID;
+import lombok.Data;
 
 @Data
-public class AddUserSkillRequest {
-
-    private UUID skillId;
-
+public class UpdateUserSkillRequest {
     private Integer yearsOfExperience;
-
     private Boolean canMentor;
-
     private SkillLevel selfLevel;
 }

@@ -1,6 +1,7 @@
 package com.knowledgenexus.controller;
 
 import com.knowledgenexus.dto.AddUserSkillRequest;
+import com.knowledgenexus.dto.UpdateUserSkillRequest;
 import com.knowledgenexus.dto.UserSkillResponse;
 import com.knowledgenexus.service.UserSkillService;
 import lombok.RequiredArgsConstructor;
@@ -46,5 +47,14 @@ public class UserSkillController {
             @PathVariable UUID id
     ) {
         userSkillService.deleteSkill(userDetails.getUsername(), id);
+    }
+
+    @PutMapping("/{id}")
+    public UserSkillResponse updateSkill(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID id,
+            @RequestBody UpdateUserSkillRequest request
+    ) {
+        return userSkillService.updateSkill(userDetails.getUsername(), id, request);
     }
 }
