@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
-import { authService } from '../services/api';
+import { authService, organizationService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { User as UserIcon } from 'lucide-react';
 import type { UpdateProfileRequest, User } from '../types';
@@ -20,6 +20,12 @@ export const ProfilePage: React.FC = () => {
     location: '',
     linkedIn: '',
     github: '',
+  });
+
+  const { data: organizationSuggestions = [] } = useQuery({
+    queryKey: ['organizations', formData.company],
+    queryFn: () => organizationService.search(formData.company).then((res) => res.data),
+    enabled: isEditing,
   });
 
   // Fetch current user data
@@ -179,13 +185,19 @@ export const ProfilePage: React.FC = () => {
                         Company
                       </label>
                       <input
+                        list="organization-suggestions"
                         type="text"
                         name="company"
                         value={formData.company}
                         onChange={handleChange}
-                        placeholder="e.g., Tech Company"
+                        placeholder="e.g., Google, Apple, SteepGraph"
                         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                       />
+                      <datalist id="organization-suggestions">
+                        {organizationSuggestions.map((organization) => (
+                          <option key={organization} value={organization} />
+                        ))}
+                      </datalist>
                     </div>
                   </div>
 
