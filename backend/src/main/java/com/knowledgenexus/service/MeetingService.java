@@ -12,6 +12,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -82,6 +83,7 @@ public class MeetingService {
         );
 
         meeting.setMeetLink(event.meetLink());
+        meeting.setMeetLinkExpiresAt(LocalDateTime.now().plusHours(1));
         meeting.setGoogleEventId(event.eventId());
         meeting.setStatus("ACCEPTED");
         Meeting saved = meetingRepository.save(meeting);
@@ -92,6 +94,24 @@ public class MeetingService {
                 recipient.getFirstName() + " accepted your session. Your Google Meet link is ready."
         );
 
+        MeetingResponse response = map(saved);
+        broadcast(conversation.getId(), response);
+        return response;
+    }
+
+    public MeetingResponse removeMeetLink(String email, UUID meetingId) {
+        User user = currentUserService.resolve(email);
+        Meeting meeting = meetingRepository.findById(meetingId).orElseThrow();
+        Conversation conversation = meeting.getConversation();
+
+        if (!conversation.getMentor().getId().equals(user.getId()) &&
+                !conversation.getMentee().getId().equals(user.getId())) {
+            throw new AccessDeniedException("Not a participant in this meeting");
+        }
+
+        meeting.setMeetLink(null);
+        meeting.setMeetLinkExpiresAt(null);
+        Meeting saved = meetingRepository.save(meeting);
         MeetingResponse response = map(saved);
         broadcast(conversation.getId(), response);
         return response;
@@ -134,6 +154,7 @@ public class MeetingService {
 
         return meetingRepository.findByConversationId(conversationId)
                 .stream()
+                .map(this::expireLinkIfNeeded)
                 .map(this::map)
                 .toList();
     }
@@ -143,8 +164,20 @@ public class MeetingService {
         User user = currentUserService.resolve(email);
         return meetingRepository.findAllForUser(user.getId())
                 .stream()
+                .map(this::expireLinkIfNeeded)
                 .map(this::map)
                 .toList();
+    }
+
+    private Meeting expireLinkIfNeeded(Meeting meeting) {
+        if (meeting.getMeetLink() != null &&
+                meeting.getMeetLinkExpiresAt() != null &&
+                meeting.getMeetLinkExpiresAt().isBefore(LocalDateTime.now())) {
+            meeting.setMeetLink(null);
+            meeting.setMeetLinkExpiresAt(null);
+            return meetingRepository.save(meeting);
+        }
+        return meeting;
     }
 
     private User otherParticipant(Conversation conversation, User user) {
@@ -170,6 +203,7 @@ public class MeetingService {
                 .recipientId(recipient.getId())
                 .scheduledAt(meeting.getScheduledAt())
                 .meetLink(meeting.getMeetLink())
+                .meetLinkExpiresAt(meeting.getMeetLinkExpiresAt())
                 .status(meeting.getStatus())
                 .organizerGoogleConnected(creator.getGoogleRefreshToken() != null)
                 .build();

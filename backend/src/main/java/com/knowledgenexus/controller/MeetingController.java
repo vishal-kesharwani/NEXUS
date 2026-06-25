@@ -62,6 +62,14 @@ public class MeetingController {
         return meetingService.declineMeeting(userDetails.getUsername(), id);
     }
 
+    @DeleteMapping("/{id}/link")
+    public MeetingResponse removeMeetLink(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @PathVariable UUID id
+    ) {
+        return meetingService.removeMeetLink(userDetails.getUsername(), id);
+    }
+
     @GetMapping
     public List<MeetingResponse> myMeetings(
             @AuthenticationPrincipal

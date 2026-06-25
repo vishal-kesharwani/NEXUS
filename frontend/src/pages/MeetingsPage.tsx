@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
 import { API_BASE_URL, meetingService } from '../services/api';
-import { Calendar, Clock, Video, User, Check, X, Hourglass } from 'lucide-react';
+import { Calendar, Clock, Video, User, Check, X, Hourglass, Trash2 } from 'lucide-react';
 import React from 'react';
 
 export const MeetingsPage: React.FC = () => {
@@ -38,6 +38,171 @@ export const MeetingsPage: React.FC = () => {
     },
   });
 
+  const removeLinkMutation = useMutation({
+    mutationFn: (id: string) => meetingService.removeMeetLink(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['meetings'] });
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to remove meeting link.');
+    },
+  });
+
+  const createdByYou = meetings.filter((meeting: any) => String(meeting.creatorId) === String(currentUserId));
+  const createdByOthers = meetings.filter((meeting: any) => String(meeting.creatorId) !== String(currentUserId));
+
+  const renderMeetingCard = (meeting: any) => {
+    const date = new Date(meeting.scheduledAt);
+    const formattedDate = date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    const formattedTime = date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const isRecipient = String(meeting.recipientId) === String(currentUserId);
+    const isPending = meeting.status === 'PENDING';
+    const isAccepted = meeting.status === 'ACCEPTED';
+    const isDeclined = meeting.status === 'DECLINED';
+    const isCreatedByYou = String(meeting.creatorId) === String(currentUserId);
+
+    const statusStyles = isAccepted
+      ? 'bg-emerald-50 text-emerald-700'
+      : isDeclined
+      ? 'bg-rose-50 text-rose-700'
+      : 'bg-indigo-50 text-indigo-600';
+
+    return (
+      <div
+        key={meeting.id}
+        className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-slate-300"
+      >
+        <div className="flex items-start justify-between">
+          <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${statusStyles}`}>
+            <Clock size={12} />
+            {meeting.status || 'PENDING'}
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="font-bold text-slate-900 text-lg">{formattedDate}</h3>
+          <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+            <Clock size={16} />
+            <span>{formattedTime}</span>
+          </div>
+          {meeting.creatorName && (
+            <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+              <User size={16} />
+              <span>{isCreatedByYou ? 'Created by you' : `Scheduled by ${meeting.creatorName}`}</span>
+            </div>
+          )}
+          {meeting.meetLinkExpiresAt && (
+            <p className="mt-2 text-xs font-medium text-amber-600">
+              Link expires at {new Date(meeting.meetLinkExpiresAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {isAccepted && meeting.meetLink && (
+            <>
+              <a
+                href={meeting.meetLink}
+                target="_blank"
+                rel="noreferrer"
+                className="flex-1 flex min-w-44 items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 shadow-sm"
+              >
+                <Video size={16} />
+                Join Google Meet
+              </a>
+              <button
+                onClick={() => removeLinkMutation.mutate(meeting.id)}
+                disabled={removeLinkMutation.isPending}
+                className="grid h-11 w-11 place-items-center rounded-2xl border border-rose-100 bg-rose-50 text-rose-600 transition hover:bg-rose-100 disabled:opacity-50"
+                title="Remove Meet link"
+              >
+                <Trash2 size={16} />
+              </button>
+            </>
+          )}
+
+          {isAccepted && !meeting.meetLink && (
+            <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+              Meet link removed or expired
+            </div>
+          )}
+
+          {isPending && isRecipient && (
+            <>
+              <button
+                onClick={() => acceptMutation.mutate(meeting.id)}
+                disabled={acceptMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 shadow-sm disabled:opacity-50"
+              >
+                <Check size={16} />
+                Accept
+              </button>
+              <button
+                onClick={() => declineMutation.mutate(meeting.id)}
+                disabled={declineMutation.isPending}
+                className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+              >
+                <X size={16} />
+                Decline
+              </button>
+            </>
+          )}
+
+          {isPending && !isRecipient && !meeting.organizerGoogleConnected && (
+            <a
+              href={googleConnectUrl}
+              className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600 shadow-sm"
+            >
+              Connect Google Calendar
+            </a>
+          )}
+
+          {isPending && !isRecipient && meeting.organizerGoogleConnected && (
+            <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
+              <Hourglass size={16} />
+              Waiting for them to accept
+            </div>
+          )}
+
+          {isDeclined && (
+            <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-400">
+              Session declined
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderMeetingSection = (title: string, items: any[]) => (
+    <section className="mt-8">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+          {items.length}
+        </span>
+      </div>
+      {items.length === 0 ? (
+        <div className="mt-4 rounded-[2rem] border border-dashed border-slate-200 bg-white/50 p-8 text-center text-sm text-slate-500">
+          No sessions in this section.
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {items.map(renderMeetingCard)}
+        </div>
+      )}
+    </section>
+  );
+
   return (
     <MainLayout>
       <div className="mx-auto max-w-5xl">
@@ -63,117 +228,10 @@ export const MeetingsPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {meetings.map((meeting: any) => {
-              const date = new Date(meeting.scheduledAt);
-              const formattedDate = date.toLocaleDateString(undefined, {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              });
-              const formattedTime = date.toLocaleTimeString(undefined, {
-                hour: '2-digit',
-                minute: '2-digit',
-              });
-
-              const isRecipient = String(meeting.recipientId) === String(currentUserId);
-              const isPending = meeting.status === 'PENDING';
-              const isAccepted = meeting.status === 'ACCEPTED';
-              const isDeclined = meeting.status === 'DECLINED';
-
-              const statusStyles = isAccepted
-                ? 'bg-emerald-50 text-emerald-700'
-                : isDeclined
-                ? 'bg-rose-50 text-rose-700'
-                : 'bg-indigo-50 text-indigo-600';
-
-              return (
-                <div
-                  key={meeting.id}
-                  className="group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md hover:border-slate-300"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${statusStyles}`}>
-                      <Clock size={12} />
-                      {meeting.status || 'PENDING'}
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <h3 className="font-bold text-slate-900 text-lg">{formattedDate}</h3>
-                    <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
-                      <Clock size={16} />
-                      <span>{formattedTime}</span>
-                    </div>
-                    {meeting.creatorName && (
-                      <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
-                        <User size={16} />
-                        <span>Scheduled by {meeting.creatorName}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-6 flex items-center gap-3">
-                    {isAccepted && meeting.meetLink && (
-                      <a
-                        href={meeting.meetLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700 shadow-sm"
-                      >
-                        <Video size={16} />
-                        Join Google Meet
-                      </a>
-                    )}
-
-                    {isPending && isRecipient && (
-                      <>
-                        <button
-                          onClick={() => acceptMutation.mutate(meeting.id)}
-                          disabled={acceptMutation.isPending}
-                          className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 shadow-sm disabled:opacity-50"
-                        >
-                          <Check size={16} />
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => declineMutation.mutate(meeting.id)}
-                          disabled={declineMutation.isPending}
-                          className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
-                        >
-                          <X size={16} />
-                          Decline
-                        </button>
-                      </>
-                    )}
-
-                    {isPending && !isRecipient && !meeting.organizerGoogleConnected && (
-                      <a
-                        href={googleConnectUrl}
-                        className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600 shadow-sm"
-                      >
-                        Connect Google Calendar
-                      </a>
-                    )}
-
-                    {isPending && !isRecipient && meeting.organizerGoogleConnected && (
-                      <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
-                        <Hourglass size={16} />
-                        Waiting for them to accept
-                      </div>
-                    )}
-
-                    {isDeclined && (
-                      <div className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-400">
-                        Session declined
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <>
+            {renderMeetingSection('Created by you', createdByYou)}
+            {renderMeetingSection('Created by others', createdByOthers)}
+          </>
         )}
       </div>
     </MainLayout>

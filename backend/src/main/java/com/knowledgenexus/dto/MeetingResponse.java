@@ -16,6 +16,7 @@ public class MeetingResponse {
     private UUID recipientId;
     private LocalDateTime scheduledAt;
     private String meetLink;
+    private LocalDateTime meetLinkExpiresAt;
     private String status;
     private boolean organizerGoogleConnected;
 }
