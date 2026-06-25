@@ -1,233 +1,301 @@
 # Knowledge Nexus
 
-**Connect. Learn. Grow.**
+<div align="center">
 
-A full-stack mentorship platform where mentees discover mentors, send and accept mentorship requests, chat in real time, and schedule sessions with **real Google Meet links** — generated through the actual Google Calendar API, not a placeholder.
+# 🎓 Knowledge Nexus
 
----
+### Connect • Learn • Mentor • Grow
 
-## ✨ Features
-
-- **Mentor Discovery** — browse and search mentors by skill, with a recommendation engine surfacing relevant matches
-- **Request Workflow** — send mentorship requests, accept/reject from a dedicated request hub
-- **Real-time Chat** — WebSocket (STOMP) powered messaging with online/typing indicators
-- **Session Scheduling with Real Google Meet**
-  - Organizer connects their Google account (OAuth2)
-  - Recipient accepts the session request
-  - Backend creates a real Google Calendar event with auto-generated Meet conferencing
-  - Both participants get an actual, joinable link
-- **Notifications** — centralized notification feed for requests, messages, and session updates
-- **Skill Catalog** — searchable skill catalog synced from an external API, attach skills to your profile
-- **Authentication**
-  - Email/password login with JWT
-  - "Sign in with Google" (Google Identity Services, ID token verification)
-- **Dashboard** — mentor/mentee activity overview (mentees, active chats, sessions, ratings)
+*A modern mentorship platform that enables professionals and students to discover mentors, collaborate through dedicated mentorship workspaces, and conduct real Google Meet mentoring sessions.*
 
 ---
 
-## 🛠 Tech Stack
+![Java](https://img.shields.io/badge/Java-21-orange?style=for-the-badge)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-6DB33F?style=for-the-badge)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge)
+![JWT](https://img.shields.io/badge/Auth-JWT-red?style=for-the-badge)
+![Google Calendar](https://img.shields.io/badge/Google-Calendar_API-4285F4?style=for-the-badge)
 
-**Backend**
-- Java 21, Spring Boot 3.5
-- Spring Security (JWT-based, stateless)
-- Spring Data JPA + Hibernate
-- PostgreSQL
-- Flyway (schema migrations)
-- WebSocket / STOMP (real-time chat)
-- Google Calendar API, Google OAuth2, Google Identity Services
-
-**Frontend**
-- React + TypeScript
-- Vite
-- TanStack Query (React Query)
-- Tailwind CSS
-- Axios
+</div>
 
 ---
 
-## 🏗 Architecture
+# ✨ Why Knowledge Nexus?
 
-```
-┌─────────────────┐        REST + WebSocket        ┌──────────────────┐
-│  React Frontend  │ ───────────────────────────▶  │  Spring Boot API  │
-│  (Vite, :5173)   │ ◀───────────────────────────  │     (:8080)       │
-└─────────────────┘                                 └──────────────────┘
-                                                            │
-                                ┌───────────────────────────┼───────────────────────────┐
-                                ▼                           ▼                           ▼
-                        ┌───────────────┐          ┌─────────────────┐         ┌──────────────────┐
-                        │  PostgreSQL    │          │  Google OAuth2   │         │  Google Calendar  │
-                        │  (Flyway)      │          │  (login + token) │         │  API (Meet links) │
-                        └───────────────┘          └─────────────────┘         └──────────────────┘
-```
+Knowledge Nexus is designed to solve a common problem inside companies, universities, and developer communities—finding the right mentor and managing mentorship professionally.
+
+Instead of a generic chat application, every mentorship becomes its own collaborative workspace with:
+
+* Dedicated mentorship lifecycle
+* Separate conversation history
+* Google Meet integration
+* Skill-based mentor reputation
+* Organization-aware mentor discovery
 
 ---
 
-## 🚀 Getting Started
+# 🚀 Core Features
 
-### Prerequisites
+## 👨‍🏫 Mentor Discovery
 
-- Java 21
-- Node.js 18+
-- PostgreSQL 14+
-- A Google Cloud project with **OAuth 2.0 Client ID** credentials and the **Google Calendar API** enabled
-
----
-
-### 1. Google Cloud setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com) → create/select a project
-2. **APIs & Services → Library** → enable **Google Calendar API**
-3. **APIs & Services → OAuth consent screen** → add scope `https://www.googleapis.com/auth/calendar.events`, add test users (while in Testing mode)
-4. **APIs & Services → Credentials** → create an **OAuth 2.0 Client ID** (Web application)
-   - Authorized JavaScript origins: `http://localhost:5173`
-   - Authorized redirect URIs: `http://localhost:8080/api/google/oauth/callback`
-5. Copy the **Client ID** and **Client Secret**
+* Search mentors by skill
+* Filter mentors by organization
+* Experience-based mentor profiles
+* Skill recommendations
+* Mentor availability
 
 ---
 
-### 2. Backend setup
+## 🤝 Mentorship Lifecycle
 
-```bash
-cd backend
+```text
+Discover Mentor
+      │
+      ▼
+Send Request
+      │
+      ▼
+Accept / Reject
+      │
+      ▼
+Dedicated Chat Room
+      │
+      ▼
+Schedule Google Meet
+      │
+      ▼
+Conduct Mentorship
+      │
+      ▼
+Rate Mentor Skill
+      │
+      ▼
+Archive Conversation
 ```
 
-Create/update `src/main/resources/application.yml`:
+Each accepted mentorship creates an independent conversation. Multiple mentorships between the same mentor and mentee never overwrite previous discussions.
+
+---
+
+## 💬 Real-Time Collaboration
+
+* WebSocket messaging
+* Typing indicators
+* Online presence
+* Conversation history
+* Archived mentorship chats
+* Read-only completed mentorships
+
+---
+
+## 📅 Google Meet Integration
+
+Knowledge Nexus integrates directly with Google Calendar.
+
+When a mentorship request is accepted:
+
+* Organizer authenticates with Google OAuth2
+* Backend creates Calendar Event
+* Google automatically generates Meet link
+* Both users receive the same meeting
+
+Meet links support:
+
+* Automatic expiration
+* Manual deletion
+* Created by Me
+* Shared with Me
+
+---
+
+## ⭐ Dynamic Mentor Reputation
+
+Each mentor owns their self-assessed skill level.
+
+After every mentorship:
+
+* Mentee reviews only the skill that was taught.
+* Community feedback slightly adjusts the mentor's displayed expertise while preserving the mentor's own assessment.
+
+---
+
+# 🏛 System Architecture
+
+```mermaid
+flowchart LR
+
+A[React + TypeScript]
+
+A -->|REST API| B(Spring Boot)
+
+A -->|WebSocket| B
+
+B --> C[(PostgreSQL)]
+
+B --> D[JWT Authentication]
+
+B --> E[Google OAuth2]
+
+E --> F[Google Calendar API]
+
+F --> G[Google Meet]
+
+C --> H[Flyway Migrations]
+```
+
+---
+
+# 📂 Project Structure
+
+```text
+knowledge-nexus/
+
+├── backend/
+│   ├── src/main/java/com/knowledgenexus
+│   │   ├── config/
+│   │   ├── controller/
+│   │   ├── dto/
+│   │   ├── model/
+│   │   ├── repository/
+│   │   ├── security/
+│   │   ├── service/
+│   │   └── websocket/
+│   │
+│   └── src/main/resources
+│       ├── application.yml
+│       └── db/migration
+│
+└── frontend/
+    ├── src
+    │   ├── components
+    │   ├── context
+    │   ├── hooks
+    │   ├── pages
+    │   ├── services
+    │   ├── types
+    │   └── utils
+    └── public
+```
+
+---
+
+# ⚙ Backend Configuration
+
+## application.yml
 
 ```yaml
-spring:
-  application:
-    name: knowledge-nexus
-  datasource:
-    url: jdbc:postgresql://localhost:5432/knowledge_nexus
-    username: <your-db-username>
-    password: <your-db-password>
-    driver-class-name: org.postgresql.Driver
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    show-sql: true
-
 server:
   port: 8080
 
+spring:
+  application:
+    name: knowledge-nexus
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/knowledge_nexus
+    username: postgres
+    password: your_password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
 app:
+  frontend-url: http://localhost:5173
+
   cors:
     allowed-origins:
       - http://localhost:5173
-  google:
-    client-id: <your-google-client-id>.apps.googleusercontent.com
-  frontend-url: http://localhost:5173
+
+  jwt:
+    secret: CHANGE_ME
+    expiration-ms: 86400000
 
 google:
-  client-id: <your-google-client-id>.apps.googleusercontent.com
-  client-secret: <your-google-client-secret>
+  client-id: YOUR_CLIENT_ID
+  client-secret: YOUR_CLIENT_SECRET
   redirect-uri: http://localhost:8080/api/google/oauth/callback
-
-jwt:
-  secret: <a-long-random-secret-string>
-  expiration-ms: 86400000
 ```
 
-> `app.google.client-id` and `google.client-id` both need the **same** value — one is read by the login token verifier, the other by the Calendar integration.
+---
 
-Create the database:
+# 💻 Frontend
 
-```sql
-CREATE DATABASE knowledge_nexus;
+## .env.example
+
+```env
+VITE_API_BASE_URL=http://localhost:8080/api
+
+VITE_GOOGLE_CLIENT_ID=YOUR_GOOGLE_CLIENT_ID
+
+VITE_APP_NAME=Knowledge Nexus
 ```
 
-Run it:
+---
+
+# 🚀 Running Locally
+
+### Backend
 
 ```bash
+cd backend
 ./mvnw spring-boot:run
 ```
 
-Flyway will apply all migrations automatically on startup. Backend runs on `http://localhost:8080`.
-
----
-
-### 3. Frontend setup
+### Frontend
 
 ```bash
 cd frontend
+
 npm install
-```
 
-Create `.env`:
-
-```dotenv
-VITE_GOOGLE_CLIENT_ID=<your-google-client-id>.apps.googleusercontent.com
-VITE_BACKEND_TARGET=http://localhost:8080
-```
-
-Run it:
-
-```bash
 npm run dev
 ```
 
-Frontend runs on `http://localhost:5173`.
+---
+
+# 🧩 Tech Stack
+
+| Layer          | Technology              |
+| -------------- | ----------------------- |
+| Frontend       | React, TypeScript, Vite |
+| Backend        | Spring Boot, Java 21    |
+| Authentication | JWT, Google OAuth2      |
+| Database       | PostgreSQL              |
+| ORM            | Spring Data JPA         |
+| Realtime       | WebSocket + STOMP       |
+| Calendar       | Google Calendar API     |
+| Video          | Google Meet             |
+| Migration      | Flyway                  |
 
 ---
 
-## 📡 Key API Endpoints
+# 📌 Roadmap
 
-| Method | Endpoint                            | Description                              |
-|--------|--------------------------------------|-------------------------------------------|
-| POST   | `/api/auth/register`                 | Register with email/password              |
-| POST   | `/api/auth/login`                    | Login, returns JWT                         |
-| POST   | `/api/auth/google`                   | Login/register via Google ID token         |
-| GET    | `/api/google/oauth/connect`          | Start Google Calendar OAuth flow           |
-| GET    | `/api/google/oauth/callback`         | OAuth callback, stores tokens               |
-| POST   | `/api/meetings`                      | Request a mentorship session               |
-| POST   | `/api/meetings/{id}/accept`          | Accept a session → creates real Meet link   |
-| POST   | `/api/meetings/{id}/decline`         | Decline a session request                  |
-| GET    | `/api/meetings`                      | List all sessions for the current user      |
-| GET    | `/api/dashboard`                     | Dashboard stats                            |
+* AI Mentor Recommendation
+* AI Session Summary
+* Resume-based Mentor Matching
+* Calendar Sync
+* Docker Deployment
+* Kubernetes Support
+* CI/CD Pipeline
+* Mobile App
+* Analytics Dashboard
 
 ---
 
-## 📂 Project Structure
-
-```
-backend/
-  src/main/java/com/knowledgenexus/
-    controller/   → REST controllers
-    service/      → Business logic (auth, meetings, Google integration, notifications)
-    model/        → JPA entities
-    repository/   → Spring Data repositories
-    dto/          → Request/response DTOs
-    security/     → JWT provider, filters, user details
-    config/       → Security, CORS, WebSocket config
-  src/main/resources/
-    db/migration/ → Flyway SQL migrations
-
-frontend/
-  src/
-    pages/        → Route-level pages (Dashboard, Chat, Meetings, Requests, etc.)
-    components/   → Reusable UI components
-    context/      → Auth context
-    services/     → API client (Axios)
-```
-
----
-
-## 🗺 Roadmap
-
-- [ ] Encrypt stored Google OAuth tokens at rest
-- [ ] Unit/integration test coverage
-- [ ] Session reschedule/cancel flow (with Calendar event updates)
-- [ ] Mentor rating & review analytics
-- [ ] Production deployment (Docker + CI/CD)
-
----
-
-## 👤 Author
+# 👨‍💻 Author
 
 **Vishal Kesharwani**
-🔗 [LinkedIn](https://linkedin.com/in/vishal-kesharwani02) · [Portfolio](https://vishalkesarwani.in) · [GitHub](https://github.com/vishal-kesharwani)
+
+Full Stack Developer • Java • Spring Boot • React • Cloud
+
+If this project helped you or inspired you, consider giving it a ⭐ on GitHub.
