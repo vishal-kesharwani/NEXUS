@@ -6,6 +6,7 @@ import com.knowledgenexus.service.CurrentUserService;
 import com.knowledgenexus.service.GoogleTokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +24,9 @@ public class GoogleAuthController {
     private final GoogleTokenService googleTokenService;
     private final CurrentUserService currentUserService;
     private final JwtTokenProvider jwtTokenProvider;
+
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
 
     /**
      * Frontend navigates the browser here (full page redirect, not an axios call) to start
@@ -52,13 +56,13 @@ public class GoogleAuthController {
         String email = new String(Base64.getUrlDecoder().decode(state), StandardCharsets.UTF_8);
 
         if (error != null || code == null) {
-            response.sendRedirect("/meetings?googleConnected=false");
+            response.sendRedirect(meetingsRedirectUrl(false));
             return;
         }
 
         User user = currentUserService.resolve(email);
         googleTokenService.exchangeCodeAndSave(code, user);
-        response.sendRedirect("/meetings?googleConnected=true");
+        response.sendRedirect(meetingsRedirectUrl(true));
     }
 
     /** Frontend polls this to know whether to show "Connect Google Calendar". */
@@ -66,5 +70,9 @@ public class GoogleAuthController {
     public Map<String, Boolean> status(@AuthenticationPrincipal UserDetails userDetails) {
         User user = currentUserService.resolve(userDetails.getUsername());
         return Map.of("connected", user.getGoogleRefreshToken() != null);
+    }
+
+    private String meetingsRedirectUrl(boolean connected) {
+        return frontendUrl.replaceAll("/+$", "") + "/meetings?googleConnected=" + connected;
     }
 }

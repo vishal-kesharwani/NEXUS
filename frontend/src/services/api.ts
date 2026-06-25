@@ -23,7 +23,7 @@ import type {
 } from '../types';
 
 const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
-const API_BASE_URL = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '/api';
+export const API_BASE_URL = rawApiUrl ? rawApiUrl.replace(/\/+$/, '') : '/api';
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,

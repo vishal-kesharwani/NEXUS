@@ -207,7 +207,7 @@ export const DashboardPage: React.FC = () => {
                 </h3>
                 <p className="mt-1 text-sm text-slate-500">{mentor.headline}</p>
                 <p className="mt-3 inline-flex rounded-full bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">
-                  Match Score: {(mentor.matchScore * 100).toFixed(0)}%
+                  Match Score: {(mentor.matchScore * 1).toFixed(0)}%
                 </p>
                 <p className="mt-3 text-sm leading-6 text-slate-600">{mentor.reason}</p>
               </div>

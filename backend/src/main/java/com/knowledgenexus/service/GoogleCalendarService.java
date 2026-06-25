@@ -7,10 +7,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,27 +31,28 @@ public class GoogleCalendarService {
             "https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1&sendUpdates=all";
 
     private static final int DEFAULT_DURATION_MINUTES = 30;
+    private static final DateTimeFormatter GOOGLE_DATE_TIME_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
     private final GoogleTokenService googleTokenService;
     private final RestTemplate restTemplate = new RestTemplate();
 
     public CreatedEvent createMeetEvent(User organizer, String attendeeEmail, LocalDateTime scheduledAt, String summary) {
         String accessToken = googleTokenService.getValidAccessToken(organizer);
-        String zone = ZoneId.systemDefault().getId();
-        LocalDateTime end = scheduledAt.plusMinutes(DEFAULT_DURATION_MINUTES);
+        ZoneId zone = ZoneId.systemDefault();
+        ZonedDateTime start = scheduledAt.atZone(zone);
+        ZonedDateTime end = start.plusMinutes(DEFAULT_DURATION_MINUTES);
 
         Map<String, Object> body = new HashMap<>();
         body.put("summary", summary);
-        body.put("start", Map.of("dateTime", scheduledAt.toString(), "timeZone", zone));
-        body.put("end", Map.of("dateTime", end.toString(), "timeZone", zone));
+        body.put("start", Map.of("dateTime", GOOGLE_DATE_TIME_FORMAT.format(start)));
+        body.put("end", Map.of("dateTime", GOOGLE_DATE_TIME_FORMAT.format(end)));
         body.put("attendees", List.of(
-                Map.of("email", organizer.getEmail()),
                 Map.of("email", attendeeEmail)
         ));
         body.put("conferenceData", Map.of(
                 "createRequest", Map.of(
-                        "requestId", UUID.randomUUID().toString(),
-                        "conferenceSolutionKey", Map.of("type", "hangoutsMeet")
+                        "requestId", UUID.randomUUID().toString()
                 )
         ));
 
@@ -56,8 +60,12 @@ public class GoogleCalendarService {
         headers.setBearerAuth(accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(EVENTS_URL, new HttpEntity<>(body, headers), Map.class);
-        return extractEvent(response.getBody());
+        try {
+            ResponseEntity<Map> response = restTemplate.postForEntity(EVENTS_URL, new HttpEntity<>(body, headers), Map.class);
+            return extractEvent(response.getBody());
+        } catch (HttpClientErrorException ex) {
+            throw new IllegalStateException("Google Calendar rejected the event request: " + ex.getResponseBodyAsString(), ex);
+        }
     }
 
     @SuppressWarnings("unchecked")

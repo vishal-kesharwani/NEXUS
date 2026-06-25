@@ -35,7 +35,7 @@ public class GoogleTokenService {
     private String redirectUri;
 
     private static final String TOKEN_URL = "https://oauth2.googleapis.com/token";
-    private static final String SCOPE = "https://www.googleapis.com/auth/calendar.events";
+    private static final String SCOPE = "https://www.googleapis.com/auth/calendar";
 
     private final UserRepository userRepository;
     private final RestTemplate restTemplate = new RestTemplate();

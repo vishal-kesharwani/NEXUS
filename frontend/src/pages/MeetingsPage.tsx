@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MainLayout } from '../layouts/MainLayout';
-import { meetingService } from '../services/api';
+import { API_BASE_URL, meetingService } from '../services/api';
 import { Calendar, Clock, Video, User, Check, X, Hourglass } from 'lucide-react';
 import React from 'react';
 
 export const MeetingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const currentUserId = localStorage.getItem('userId');
+  const googleConnectUrl = `${API_BASE_URL}/google/oauth/connect?token=${encodeURIComponent(localStorage.getItem('token') || '')}`;
 
   const { data: meetings = [], isLoading } = useQuery({
     queryKey: ['meetings'],
@@ -149,7 +150,7 @@ export const MeetingsPage: React.FC = () => {
 
                     {isPending && !isRecipient && !meeting.organizerGoogleConnected && (
                       <a
-                        href={`${import.meta.env.VITE_BACKEND_TARGET}/api/google/oauth/connect?token=${encodeURIComponent(localStorage.getItem('token') || '')}`}
+                        href={googleConnectUrl}
                         className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-600 shadow-sm"
                       >
                         Connect Google Calendar
