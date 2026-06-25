@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Send, MessageCircle, Sparkles, Video, X } from 'lucide-react';
 import { MainLayout } from '../layouts/MainLayout';
-import { chatService, meetingService, aiService } from '../services/api';
-import type { ConversationResponse, MessageResponse } from '../types';
+import { chatService, meetingService, aiService, reviewService } from '../services/api';
+import type { ConversationResponse, MessageResponse, SkillLevel } from '../types';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
@@ -13,7 +13,16 @@ const getWsUrl = () => {
   return apiBase.replace(/\/api$/, '') + '/ws';
 };
 
+const SKILL_LEVELS: { value: SkillLevel; label: string }[] = [
+  { value: 'BEGINNER', label: 'Beginner' },
+  { value: 'INTERMEDIATE', label: 'Intermediate' },
+  { value: 'PRO', label: 'Pro' },
+  { value: 'ADVANCED', label: 'Advanced' },
+  { value: 'SUPERIOR', label: 'Superior' },
+];
+
 export const ChatPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<ConversationResponse | null>(null);
   const [message, setMessage] = useState('');
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -30,6 +39,9 @@ export const ChatPage: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiResponse, setAiResponse] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
+  const [reviewRating, setReviewRating] = useState('5');
+  const [skillLevelRating, setSkillLevelRating] = useState<SkillLevel>('PRO');
+  const [reviewComment, setReviewComment] = useState('');
 
   const currentUserId = localStorage.getItem('userId');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -233,6 +245,39 @@ export const ChatPage: React.FC = () => {
     },
   });
 
+  const closeConversationMutation = useMutation({
+    mutationFn: (conversationId: string) => chatService.closeConversation(conversationId),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      setSelectedConversation(res.data);
+    },
+  });
+
+  const mentorshipReviewMutation = useMutation({
+    mutationFn: () =>
+      reviewService.createReview({
+        mentorId: selectedConversation!.mentorId,
+        skillId: selectedConversation!.skillId,
+        mentorshipRequestId: selectedConversation!.mentorshipRequestId,
+        rating: Number.parseFloat(reviewRating),
+        skillLevelRating,
+        comment: reviewComment,
+      }),
+    onSuccess: () => {
+      setReviewComment('');
+      alert('Thanks! Your mentorship rating was submitted.');
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to submit mentorship rating.');
+    },
+  });
+
+  const canRateClosedMentorship =
+    selectedConversation?.status === 'CLOSED' &&
+    selectedConversation.mentorshipRequestId &&
+    selectedConversation.skillId &&
+    String(selectedConversation.menteeId) === String(currentUserId);
+
   // AI assistant call
   const handleAskAi = async (presetPrompt?: string) => {
     const promptToUse = presetPrompt || aiPrompt;
@@ -283,7 +328,10 @@ export const ChatPage: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-slate-900">{conversation.displayName}</h3>
-                      <p className="text-xs text-slate-500">Active Mentorship</p>
+                      <p className="text-xs text-slate-500">
+                        {conversation.skillName ? `${conversation.skillName} mentorship` : 'Mentorship'}
+                        {conversation.status === 'CLOSED' ? ' - Closed' : ''}
+                      </p>
                     </div>
                   </button>
                 );
@@ -309,13 +357,20 @@ export const ChatPage: React.FC = () => {
                   {selectedConversation && (
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className={`h-2.5 w-2.5 rounded-full ${isRecipientOnline ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                      <span className="text-xs text-slate-500">{isRecipientOnline ? 'Online' : 'Offline'}</span>
+                      <span className="text-xs text-slate-500">
+                        {selectedConversation.status === 'CLOSED'
+                          ? 'Mentorship closed'
+                          : isRecipientOnline
+                          ? 'Online'
+                          : 'Offline'}
+                        {selectedConversation.skillName ? ` - ${selectedConversation.skillName}` : ''}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {selectedConversation && (
+              {selectedConversation && selectedConversation.status !== 'CLOSED' && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
@@ -334,6 +389,13 @@ export const ChatPage: React.FC = () => {
                   >
                     <Video size={14} />
                     Schedule Meeting
+                  </button>
+                  <button
+                    onClick={() => closeConversationMutation.mutate(selectedConversation.id)}
+                    disabled={closeConversationMutation.isPending}
+                    className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+                  >
+                    Close Mentorship
                   </button>
                 </div>
               )}
@@ -383,7 +445,7 @@ export const ChatPage: React.FC = () => {
             </div>
 
             {/* Input Bar */}
-            {selectedConversation && (
+            {selectedConversation && selectedConversation.status !== 'CLOSED' && (
               <div className="shrink-0 border-t border-slate-200 bg-white p-4">
                 <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-2 focus-within:border-indigo-400 focus-within:bg-white transition-all">
                   <input
@@ -403,6 +465,55 @@ export const ChatPage: React.FC = () => {
                     <Send size={16} />
                   </button>
                 </div>
+              </div>
+            )}
+
+            {selectedConversation?.status === 'CLOSED' && (
+              <div className="shrink-0 border-t border-slate-200 bg-white p-4">
+                <p className="text-center text-sm font-medium text-slate-500">
+                  This mentorship period is closed. Messages are preserved for reference.
+                </p>
+                {canRateClosedMentorship && (
+                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="grid gap-3 md:grid-cols-[120px_180px_1fr_auto]">
+                      <select
+                        value={reviewRating}
+                        onChange={(e) => setReviewRating(e.target.value)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                      >
+                        {[5, 4, 3, 2, 1].map((rating) => (
+                          <option key={rating} value={rating}>
+                            {rating} stars
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={skillLevelRating}
+                        onChange={(e) => setSkillLevelRating(e.target.value as SkillLevel)}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                      >
+                        {SKILL_LEVELS.map((level) => (
+                          <option key={level.value} value={level.value}>
+                            {level.label}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={reviewComment}
+                        onChange={(e) => setReviewComment(e.target.value)}
+                        placeholder={`Rate the ${selectedConversation.skillName || 'mentored'} skill experience`}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+                      />
+                      <button
+                        onClick={() => mentorshipReviewMutation.mutate()}
+                        disabled={mentorshipReviewMutation.isPending || !reviewComment.trim()}
+                        className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+                      >
+                        Submit Rating
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

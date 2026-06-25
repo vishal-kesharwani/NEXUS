@@ -27,5 +27,27 @@ public class Conversation {
     @JoinColumn(name = "mentee_id")
     private User mentee;
 
+    @ManyToOne
+    @JoinColumn(name = "mentorship_request_id")
+    private MentorshipRequest mentorshipRequest;
+
+    @ManyToOne
+    @JoinColumn(name = "skill_id")
+    private Skill skill;
+
+    private String status;
+
+    private LocalDateTime closedAt;
+
     private LocalDateTime createdAt;
+
+    @PrePersist
+    public void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = "ACTIVE";
+        }
+    }
 }

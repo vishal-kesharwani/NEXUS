@@ -57,4 +57,13 @@ public class ChatController {
                 request
         );
     }
+
+    @PostMapping("/conversations/{conversationId}/close")
+    public ConversationResponse closeConversation(
+            @AuthenticationPrincipal
+            UserDetails userDetails,
+            @PathVariable UUID conversationId
+    ) {
+        return chatService.closeConversation(userDetails.getUsername(), conversationId);
+    }
 }

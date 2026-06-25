@@ -98,24 +98,17 @@ public class MentorshipRequestService {
                 request.getMentor().getFirstName() + " " + request.getMentor().getLastName() + " accepted your mentorship request for " + request.getSkill().getName()
         );
 
-        boolean conversationExists =
-                conversationRepository
-                        .existsByMentorIdAndMenteeId(
-                                request.getMentor().getId(),
-                                request.getMentee().getId()
-                        );
+        Conversation conversation =
+                Conversation.builder()
+                        .mentor(request.getMentor())
+                        .mentee(request.getMentee())
+                        .mentorshipRequest(request)
+                        .skill(request.getSkill())
+                        .status("ACTIVE")
+                        .createdAt(LocalDateTime.now())
+                        .build();
 
-        if (!conversationExists) {
-
-            Conversation conversation =
-                    Conversation.builder()
-                            .mentor(request.getMentor())
-                            .mentee(request.getMentee())
-                            .createdAt(LocalDateTime.now())
-                            .build();
-
-            conversationRepository.save(conversation);
-        }
+        conversationRepository.save(conversation);
 
         return map(request);
     }

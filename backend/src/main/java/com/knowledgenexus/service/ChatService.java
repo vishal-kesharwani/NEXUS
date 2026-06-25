@@ -79,6 +79,9 @@ public class ChatService {
                 !conversation.getMentee().getId().equals(sender.getId())) {
             throw new org.springframework.security.access.AccessDeniedException("Not a participant in this conversation");
         }
+        if ("CLOSED".equals(conversation.getStatus())) {
+            throw new IllegalStateException("This mentorship chat is closed");
+        }
 
         Message message =
                 Message.builder()
@@ -139,7 +142,26 @@ public class ChatService {
                 .mentorName(mentorName)
                 .menteeName(menteeName)
                 .displayName(displayName)
+                .mentorshipRequestId(conversation.getMentorshipRequest() == null ? null : conversation.getMentorshipRequest().getId())
+                .skillId(conversation.getSkill() == null ? null : conversation.getSkill().getId())
+                .skillName(conversation.getSkill() == null ? null : conversation.getSkill().getName())
+                .status(conversation.getStatus())
+                .closedAt(conversation.getClosedAt())
                 .build();
+    }
+
+    public ConversationResponse closeConversation(String email, UUID conversationId) {
+        User user = currentUserService.resolve(email);
+        Conversation conversation = conversationRepository.findById(conversationId).orElseThrow();
+
+        if (!conversation.getMentor().getId().equals(user.getId()) &&
+                !conversation.getMentee().getId().equals(user.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Not a participant in this conversation");
+        }
+
+        conversation.setStatus("CLOSED");
+        conversation.setClosedAt(LocalDateTime.now());
+        return mapConversation(conversationRepository.save(conversation), user);
     }
 
     private MessageResponse mapMessage(
