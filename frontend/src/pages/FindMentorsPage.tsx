@@ -14,6 +14,7 @@ export const FindMentorsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [requestingMentorId, setRequestingMentorId] = useState<string | null>(null);
+  const [selectedRequestSkills, setSelectedRequestSkills] = useState<Record<string, string>>({});
   const [viewMode, setViewMode] = useState<'recommendations' | 'search'>('recommendations');
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const navigate = useNavigate();
@@ -52,13 +53,19 @@ export const FindMentorsPage: React.FC = () => {
       setRequestingMentorId(mentorId);
     },
 
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['recommendations'],
       });
 
       queryClient.invalidateQueries({
         queryKey: ['mentorSearch'],
+      });
+
+      setSelectedRequestSkills((prev) => {
+        const next = { ...prev };
+        delete next[variables.mentorId];
+        return next;
       });
     },
 
@@ -71,8 +78,12 @@ export const FindMentorsPage: React.FC = () => {
   const displayMentors =
     viewMode === 'recommendations' ? recommendations ?? [] : searchResults ?? [];
 
-  const MentorCard: React.FC<{ mentor: any }> = ({ mentor }) => (
-    <div className="group rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(15,23,42,0.12)]">
+  const MentorCard: React.FC<{ mentor: any }> = ({ mentor }) => {
+    const mentorSkills = mentor.skills ?? [];
+    const selectedSkillId = selectedRequestSkills[mentor.id] || '';
+
+    return (
+      <div className="group rounded-[1.5rem] border border-white/80 bg-white/92 p-5 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-1 hover:shadow-[0_24px_52px_rgba(15,23,42,0.12)]">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold text-slate-900">
@@ -95,11 +106,11 @@ export const FindMentorsPage: React.FC = () => {
         )}
       </div>
 
-      {mentor.skills && mentor.skills.length > 0 && (
+      {mentorSkills.length > 0 && (
         <div className="mb-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Skills</p>
           <div className="flex flex-wrap gap-2">
-            {mentor.skills.slice(0, 3).map((skill: any) => (
+            {mentorSkills.slice(0, 3).map((skill: any) => (
               <span
                 key={skill.id}
                 className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
@@ -107,9 +118,9 @@ export const FindMentorsPage: React.FC = () => {
                 {skill.name}
               </span>
             ))}
-            {mentor.skills.length > 3 && (
+            {mentorSkills.length > 3 && (
               <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-                +{mentor.skills.length - 3} more
+                +{mentorSkills.length - 3} more
               </span>
             )}
           </div>
@@ -119,16 +130,39 @@ export const FindMentorsPage: React.FC = () => {
       {mentor.reason && <p className="mb-4 text-sm leading-6 text-slate-600">{mentor.reason}</p>}
 
       <div className="space-y-2">
+        <select
+          value={selectedSkillId}
+          onChange={(e) =>
+            setSelectedRequestSkills((prev) => ({
+              ...prev,
+              [mentor.id]: e.target.value,
+            }))
+          }
+          disabled={!mentorSkills.length}
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <option value="">Choose mentorship skill...</option>
+          {mentorSkills.map((skill: any) => (
+            <option key={skill.id} value={skill.id}>
+              {skill.name}
+            </option>
+          ))}
+        </select>
 
         <button
-          onClick={() =>
+          onClick={() => {
+            if (!selectedSkillId) {
+              alert('Please choose the skill you want mentorship for.');
+              return;
+            }
             sendRequestMutation.mutate({
               mentorId: mentor.id,
-              skillId: mentor.skills[0].id,
-            })
-          }
+              skillId: selectedSkillId,
+            });
+          }}
           disabled={
-            !mentor.skills?.length ||
+            !mentorSkills.length ||
+            !selectedSkillId ||
             sendRequestMutation.isPending ||
             requestingMentorId === mentor.id
           }
@@ -165,7 +199,8 @@ export const FindMentorsPage: React.FC = () => {
 
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <MainLayout>
