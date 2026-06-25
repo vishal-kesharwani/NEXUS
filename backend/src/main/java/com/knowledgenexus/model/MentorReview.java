@@ -26,7 +26,18 @@ public class MentorReview {
     @JoinColumn(name = "reviewer_id")
     private User reviewer;
 
+    @ManyToOne
+    @JoinColumn(name = "skill_id")
+    private Skill skill;
+
+    @ManyToOne
+    @JoinColumn(name = "mentorship_request_id")
+    private MentorshipRequest mentorshipRequest;
+
     private double rating;
+
+    @Enumerated(EnumType.STRING)
+    private SkillLevel skillLevelRating;
 
     @Column(columnDefinition = "TEXT")
     private String comment;
