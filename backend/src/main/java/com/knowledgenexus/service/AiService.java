@@ -34,8 +34,17 @@ public class AiService {
     @Value("${OPENROUTER_API_KEY:}")
     private String openrouterApiKey;
 
+    @Value("${OPENROUTER_API_KEYS:}")
+    private String openrouterApiKeys;
+
+    @Value("${OPENROUTER_MODEL:deepseek/deepseek-v4-pro}")
+    private String openrouterModel;
+
     @Value("${OPENAI_API_KEY:}")
     private String openaiApiKey;
+
+    @Value("${OPENAI_MODEL:gpt-4o-mini}")
+    private String openaiModel;
 
     public String getMatchReason(UUID mentorId, UUID menteeId) {
         User mentor = userRepository.findById(mentorId).orElseThrow();
@@ -79,8 +88,7 @@ public class AiService {
                 overlapping.isEmpty() ? "general interest in tech" : String.join(", ", overlapping)
         );
 
-        String key = getApiKey();
-        if (key == null || key.isEmpty()) {
+        if (!hasAnyApiKey()) {
             return generateMockMatchReason(mentor, mentee, overlapping);
         }
 
@@ -110,65 +118,151 @@ public class AiService {
                 userPrompt
         );
 
-        String key = getApiKey();
-        if (key == null || key.isEmpty()) {
+        if (!hasAnyApiKey()) {
             return generateMockAiResponse(userPrompt, conversation, history);
         }
 
         return callAiEndpoint(prompt, "You are an assistant inside a chat application helping mentors and mentees.");
     }
 
-    private String getApiKey() {
-        if (openrouterApiKey != null && !openrouterApiKey.isEmpty()) return openrouterApiKey;
-        if (openaiApiKey != null && !openaiApiKey.isEmpty()) return openaiApiKey;
-        
-        // Check system env fallback
-        String envKey = System.getenv("OPENROUTER_API_KEY");
-        if (envKey != null && !envKey.isEmpty()) return envKey;
-        envKey = System.getenv("OPENAI_API_KEY");
-        if (envKey != null && !envKey.isEmpty()) return envKey;
-        
+    private boolean hasAnyApiKey() {
+        return !getOpenRouterKeys().isEmpty() || getOpenAiKey() != null;
+    }
+
+    private List<String> getOpenRouterKeys() {
+        List<String> keys = new ArrayList<>();
+        addKeys(keys, openrouterApiKeys);
+        addKeys(keys, openrouterApiKey);
+        addKeys(keys, System.getenv("OPENROUTER_API_KEYS"));
+        addKeys(keys, System.getenv("OPENROUTER_API_KEY"));
+        return keys.stream()
+                .map(String::trim)
+                .filter(key -> !key.isBlank())
+                .distinct()
+                .toList();
+    }
+
+    private String getOpenAiKey() {
+        String key = firstNonBlank(openaiApiKey, System.getenv("OPENAI_API_KEY"));
+        return key == null ? null : key.trim();
+    }
+
+    private void addKeys(List<String> keys, String rawKeys) {
+        if (rawKeys == null || rawKeys.isBlank()) {
+            return;
+        }
+        Arrays.stream(rawKeys.split("[,;\\s]+"))
+                .map(String::trim)
+                .filter(key -> !key.isBlank())
+                .forEach(keys::add);
+    }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value;
+            }
+        }
         return null;
     }
 
     private String callAiEndpoint(String prompt, String systemInstruction) {
-        try {
-            boolean isOpenRouter = openrouterApiKey != null && !openrouterApiKey.isEmpty() || System.getenv("OPENROUTER_API_KEY") != null;
-            String url = isOpenRouter ? "https://openrouter.ai/api/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
-            String model = isOpenRouter ? "google/gemini-2.5-flash" : "gpt-4o-mini";
+        List<String> openRouterKeys = getOpenRouterKeys();
+        AiCallResult lastOpenRouterResult = null;
+        for (int i = 0; i < openRouterKeys.size(); i++) {
+            AiCallResult result = callChatCompletions(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    openrouterModel,
+                    openRouterKeys.get(i),
+                    prompt,
+                    systemInstruction,
+                    true
+            );
+            if (result.success()) {
+                return result.content();
+            }
+            lastOpenRouterResult = result;
+        }
 
+        String openAiKey = getOpenAiKey();
+        if (openAiKey != null) {
+            AiCallResult result = callChatCompletions(
+                    "https://api.openai.com/v1/chat/completions",
+                    openaiModel,
+                    openAiKey,
+                    prompt,
+                    systemInstruction,
+                    false
+            );
+            if (result.success()) {
+                return result.content();
+            }
+            return "Failed to query OpenAI model (Status: " + result.statusCode() + "). " +
+                    "Fallback to local advisor: please align goals with your mentor.";
+        }
+
+        if (lastOpenRouterResult != null) {
+
+            return """
+OpenRouter Error
+
+Status : %d
+
+Response :
+
+%s
+""".formatted(
+                    lastOpenRouterResult.statusCode(),
+                    lastOpenRouterResult.content()
+            );
+        }
+
+        return "No AI API key configured. Fallback to local advisor: please align goals with your mentor.";
+    }
+
+    private AiCallResult callChatCompletions(
+            String url,
+            String model,
+            String apiKey,
+            String prompt,
+            String systemInstruction,
+            boolean openRouter
+    ) {
+        try {
             Map<String, Object> messageSystem = Map.of("role", "system", "content", systemInstruction);
             Map<String, Object> messageUser = Map.of("role", "user", "content", prompt);
-            
             Map<String, Object> requestBody = Map.of(
-                "model", model,
-                "messages", List.of(messageSystem, messageUser)
+                    "model", model,
+                    "messages", List.of(messageSystem, messageUser)
             );
 
-            String requestBodyJson = objectMapper.writeValueAsString(requestBody);
-
-            HttpClient client = HttpClient.newHttpClient();
             HttpRequest.Builder builder = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + getApiKey())
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBodyJson));
+                    .header("Authorization", "Bearer " + apiKey.trim())
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)));
 
-            if (isOpenRouter) {
-                builder.header("HTTP-Referer", "http://localhost:8080");
+            if (openRouter) {
+                builder.header("HTTP-Referer", "http://localhost:5173")
+                        .header("X-Title", "Knowledge Nexus");
             }
 
-            HttpResponse<String> response = client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = HttpClient.newHttpClient()
+                    .send(builder.build(), HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
                 JsonNode jsonNode = objectMapper.readTree(response.body());
-                return jsonNode.path("choices").path(0).path("message").path("content").asText().trim();
-            } else {
-                return "Failed to query AI model (Status: " + response.statusCode() + "). Fallback to local advisor: please align goals with your mentor.";
+                return new AiCallResult(true, response.statusCode(),
+                        jsonNode.path("choices").path(0).path("message").path("content").asText().trim());
             }
+
+            return new AiCallResult(false, response.statusCode(), response.body());
         } catch (Exception e) {
-            return "AI service error: " + e.getMessage();
+            return new AiCallResult(false, 500, e.getMessage());
         }
+    }
+
+    private record AiCallResult(boolean success, int statusCode, String content) {
     }
 
     private String generateMockMatchReason(User mentor, User mentee, Set<String> overlapping) {
@@ -189,6 +283,7 @@ public class AiService {
     private String generateMockAiResponse(String userPrompt, Conversation conversation, List<Message> history) {
         String mentorName = conversation.getMentor().getFirstName();
         String menteeName = conversation.getMentee().getFirstName();
+        
 
         if (userPrompt.toLowerCase().contains("roadmap")) {
             return String.format(
