@@ -42,6 +42,7 @@ export const ChatPage: React.FC = () => {
   const [reviewRating, setReviewRating] = useState('5');
   const [skillLevelRating, setSkillLevelRating] = useState<SkillLevel>('PRO');
   const [reviewComment, setReviewComment] = useState('');
+  const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
 
   const currentUserId = localStorage.getItem('userId');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,10 @@ export const ChatPage: React.FC = () => {
       setSelectedConversation(null);
     }
   }, [conversations]);
+
+  useEffect(() => {
+    setHasSubmittedReview(false);
+  }, [selectedConversation?.id]);
 
   // Fetch messages (Initial load & cache)
   useQuery({
@@ -113,6 +118,10 @@ export const ChatPage: React.FC = () => {
               return prev.filter((id) => id !== status.userId);
             }
           });
+        });
+
+        client.subscribe(`/topic/notifications/${currentUserId}`, () => {
+          queryClient.invalidateQueries({ queryKey: ['conversations'] });
         });
       },
     });
@@ -265,6 +274,7 @@ export const ChatPage: React.FC = () => {
       }),
     onSuccess: () => {
       setReviewComment('');
+      setHasSubmittedReview(true);
       alert('Thanks! Your mentorship rating was submitted.');
     },
     onError: (err: any) => {
@@ -276,7 +286,8 @@ export const ChatPage: React.FC = () => {
     selectedConversation?.status === 'CLOSED' &&
     selectedConversation.mentorshipRequestId &&
     selectedConversation.skillId &&
-    String(selectedConversation.menteeId) === String(currentUserId);
+    String(selectedConversation.menteeId) === String(currentUserId) &&
+    !hasSubmittedReview;
 
   // AI assistant call
   const handleAskAi = async (presetPrompt?: string) => {
@@ -333,6 +344,9 @@ export const ChatPage: React.FC = () => {
                         {conversation.status === 'CLOSED' ? ' - Closed' : ''}
                       </p>
                     </div>
+                    {conversation.hasUnreadMessages && (
+                      <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.15)]" />
+                    )}
                   </button>
                 );
               })}
@@ -370,7 +384,7 @@ export const ChatPage: React.FC = () => {
                 </div>
               </div>
 
-              {selectedConversation && selectedConversation.status !== 'CLOSED' && (
+              {selectedConversation && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
@@ -379,24 +393,28 @@ export const ChatPage: React.FC = () => {
                       setShowAiDrawer(true);
                     }}
                     className="flex items-center gap-1.5 rounded-2xl border border-indigo-100 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
-                  >
-                    <Sparkles size={14} />
-                    Ask AI
-                  </button>
-                  <button
-                    onClick={() => setShowScheduleModal(true)}
-                    className="flex items-center gap-1.5 rounded-2xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 shadow transition"
-                  >
-                    <Video size={14} />
-                    Schedule Meeting
-                  </button>
-                  <button
-                    onClick={() => closeConversationMutation.mutate(selectedConversation.id)}
-                    disabled={closeConversationMutation.isPending}
-                    className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
-                  >
-                    Close Mentorship
-                  </button>
+                    >
+                      <Sparkles size={14} />
+                      Ask AI
+                    </button>
+                  {selectedConversation.status !== 'CLOSED' && (
+                    <>
+                      <button
+                        onClick={() => setShowScheduleModal(true)}
+                        className="flex items-center gap-1.5 rounded-2xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 shadow transition"
+                      >
+                        <Video size={14} />
+                        Schedule Meeting
+                      </button>
+                      <button
+                        onClick={() => closeConversationMutation.mutate(selectedConversation.id)}
+                        disabled={closeConversationMutation.isPending}
+                        className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+                      >
+                        Close Mentorship
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -504,9 +522,9 @@ export const ChatPage: React.FC = () => {
                         placeholder={`Rate the ${selectedConversation.skillName || 'mentored'} skill experience`}
                         className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
                       />
-                      <button
+                  <button
                         onClick={() => mentorshipReviewMutation.mutate()}
-                        disabled={mentorshipReviewMutation.isPending || !reviewComment.trim()}
+                        disabled={mentorshipReviewMutation.isPending || !reviewComment.trim() || hasSubmittedReview}
                         className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
                       >
                         Submit Rating
