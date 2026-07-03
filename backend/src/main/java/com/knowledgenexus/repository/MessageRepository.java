@@ -13,5 +13,7 @@ public interface MessageRepository
             UUID conversationId
     );
 
+    java.util.Optional<Message> findTopByConversationIdOrderBySentAtDesc(UUID conversationId);
+
     long countByConversationId(UUID conversationId);
 }

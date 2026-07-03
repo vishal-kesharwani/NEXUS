@@ -31,4 +31,6 @@ public class ConversationResponse {
     private String status;
 
     private LocalDateTime closedAt;
+
+    private boolean hasUnreadMessages;
 }

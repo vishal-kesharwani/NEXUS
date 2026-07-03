@@ -147,6 +147,9 @@ export interface DashboardResponse {
   sentRequests: number;
   receivedRequests: number;
   recommendations: number;
+  pendingReceivedRequests?: number;
+  pendingMeetings?: number;
+  unreadChats?: number;
   totalMentees?: number;
   activeChats?: number;
   sessionsConducted?: number;
@@ -180,6 +183,7 @@ export interface ConversationResponse {
   skillName?: string;
   status?: 'ACTIVE' | 'CLOSED';
   closedAt?: string;
+  hasUnreadMessages?: boolean;
 }
 
 export interface MessageResponse {

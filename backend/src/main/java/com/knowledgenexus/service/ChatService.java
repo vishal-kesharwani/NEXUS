@@ -53,6 +53,8 @@ public class ChatService {
             throw new org.springframework.security.access.AccessDeniedException("Not a participant in this conversation");
         }
 
+        markConversationAsRead(conversation, user);
+
         return messageRepository
                 .findByConversationIdOrderBySentAtAsc(
                         conversationId
@@ -147,6 +149,7 @@ public class ChatService {
                 .skillName(conversation.getSkill() == null ? null : conversation.getSkill().getName())
                 .status(conversation.getStatus())
                 .closedAt(conversation.getClosedAt())
+                .hasUnreadMessages(hasUnreadMessages(conversation, currentUser))
                 .build();
     }
 
@@ -183,5 +186,30 @@ public class ChatService {
                 .content(message.getContent())
                 .sentAt(message.getSentAt())
                 .build();
+    }
+
+    private void markConversationAsRead(Conversation conversation, User user) {
+        LocalDateTime now = LocalDateTime.now();
+        if (conversation.getMentor().getId().equals(user.getId())) {
+            conversation.setMentorLastReadAt(now);
+        } else {
+            conversation.setMenteeLastReadAt(now);
+        }
+        conversationRepository.save(conversation);
+    }
+
+    private boolean hasUnreadMessages(Conversation conversation, User currentUser) {
+        Message latestMessage = messageRepository.findTopByConversationIdOrderBySentAtDesc(conversation.getId())
+                .orElse(null);
+
+        if (latestMessage == null || latestMessage.getSender().getId().equals(currentUser.getId())) {
+            return false;
+        }
+
+        LocalDateTime lastReadAt = conversation.getMentor().getId().equals(currentUser.getId())
+                ? conversation.getMentorLastReadAt()
+                : conversation.getMenteeLastReadAt();
+
+        return lastReadAt == null || latestMessage.getSentAt().isAfter(lastReadAt);
     }
 }

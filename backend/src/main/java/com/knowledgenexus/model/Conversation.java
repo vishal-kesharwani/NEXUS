@@ -41,6 +41,10 @@ public class Conversation {
 
     private LocalDateTime createdAt;
 
+    private LocalDateTime mentorLastReadAt;
+
+    private LocalDateTime menteeLastReadAt;
+
     @PrePersist
     public void prePersist() {
         if (createdAt == null) {

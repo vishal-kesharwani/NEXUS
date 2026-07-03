@@ -36,6 +36,11 @@ public class DashboardService {
                 .filter(c -> messageRepository.countByConversationId(c.getId()) > 0)
                 .count();
 
+        long unreadChats = conversationRepository.findByMentorIdOrMenteeId(user.getId(), user.getId())
+                .stream()
+                .filter(c -> hasUnreadMessages(c, user))
+                .count();
+
         long sessionsConducted = conversationRepository.findByMentorIdOrMenteeId(user.getId(), user.getId())
                 .stream()
                 .flatMap(c -> meetingRepository.findByConversationId(c.getId()).stream())
@@ -45,6 +50,13 @@ public class DashboardService {
         double averageRating = reviewService.getAverageRating(user.getId());
 
         long acceptedRequests = mentorshipRequestRepository.countByMenteeIdAndStatus(user.getId(), "ACCEPTED");
+        long pendingReceivedRequests = mentorshipRequestRepository.countByMentorIdAndStatus(user.getId(), "PENDING");
+
+        long pendingMeetings = conversationRepository.findByMentorIdOrMenteeId(user.getId(), user.getId())
+                .stream()
+                .flatMap(c -> meetingRepository.findByConversationId(c.getId()).stream())
+                .filter(m -> "PENDING".equals(m.getStatus()))
+                .count();
 
         long upcomingSessions = conversationRepository.findByMentorIdOrMenteeId(user.getId(), user.getId())
                 .stream()
@@ -58,6 +70,9 @@ public class DashboardService {
                 .sentRequests(mentorshipRequestRepository.countByMenteeId(user.getId()))
                 .receivedRequests(mentorshipRequestRepository.countByMentorId(user.getId()))
                 .recommendations(recommendationService.recommend(email).size())
+                .pendingReceivedRequests(pendingReceivedRequests)
+                .pendingMeetings(pendingMeetings)
+                .unreadChats(unreadChats)
                 .totalMentees(totalMentees)
                 .activeChats(activeChats)
                 .sessionsConducted(sessionsConducted)
@@ -66,5 +81,17 @@ public class DashboardService {
                 .skillsLearned(skillsLearned)
                 .upcomingSessions(upcomingSessions)
                 .build();
+    }
+
+    private boolean hasUnreadMessages(com.knowledgenexus.model.Conversation conversation, User currentUser) {
+        var latestMessage = messageRepository.findTopByConversationIdOrderBySentAtDesc(conversation.getId()).orElse(null);
+        if (latestMessage == null || latestMessage.getSender().getId().equals(currentUser.getId())) {
+            return false;
+        }
+
+        LocalDateTime lastReadAt = conversation.getMentor().getId().equals(currentUser.getId())
+                ? conversation.getMentorLastReadAt()
+                : conversation.getMenteeLastReadAt();
+        return lastReadAt == null || latestMessage.getSentAt().isAfter(lastReadAt);
     }
 }

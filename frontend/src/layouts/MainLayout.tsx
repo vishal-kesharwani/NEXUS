@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Menu, Search, Sparkles, X, LogOut, UserRound, 
@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useQuery } from '@tanstack/react-query';
-import { notificationService } from '../services/api';
+import { dashboardService, notificationService } from '../services/api';
+import type { DashboardResponse } from '../types';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
@@ -22,13 +23,39 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const currentUserId = localStorage.getItem('userId');
+  const [toasts, setToasts] = useState<Array<{ id: string; title: string; message: string }>>([]);
+  const seenNotificationIdsRef = useRef<Set<string>>(new Set());
 
-  // Query for unread notifications count
+  const { data: dashboard, refetch: refetchDashboard } = useQuery<DashboardResponse>({
+    queryKey: ['dashboard-badges'],
+    queryFn: () => dashboardService.getDashboard().then((res) => res.data),
+    enabled: !!currentUserId,
+  });
+
   const { data: unreadCount = 0, refetch: refetchUnreadCount } = useQuery({
     queryKey: ['unread-notifications-count'],
     queryFn: () => notificationService.getUnreadCount().then((res) => res.data),
     enabled: !!currentUserId,
   });
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    notificationService.getNotifications()
+      .then((response) => {
+        seenNotificationIdsRef.current = new Set(response.data.map((item) => item.id));
+      })
+      .catch(() => {
+        // Seeding the toast cache is a best-effort optimization.
+      });
+  }, [currentUserId]);
+
+  const pushToast = (title: string, message: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    setToasts((prev) => [{ id, title, message }, ...prev].slice(0, 4));
+    window.setTimeout(() => {
+      setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, 5000);
+  };
 
   // Subscribe to real-time notification updates
   useEffect(() => {
@@ -40,8 +67,25 @@ const Sidebar: React.FC = () => {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
       onConnect: () => {
-        client.subscribe(`/topic/notifications/${currentUserId}`, () => {
+        client.subscribe(`/topic/notifications/${currentUserId}`, async () => {
           refetchUnreadCount();
+          refetchDashboard();
+
+          try {
+            const response = await notificationService.getNotifications();
+            const unreadNotifications = response.data.filter((item) => !item.read);
+            const newNotifications = unreadNotifications.filter(
+              (item) => !seenNotificationIdsRef.current.has(item.id)
+            );
+
+            newNotifications.slice(0, 2).forEach((item) => {
+              pushToast(item.title, item.message);
+            });
+
+            unreadNotifications.forEach((item) => seenNotificationIdsRef.current.add(item.id));
+          } catch {
+            // Badge updates still happen; toast delivery is best-effort.
+          }
         });
       },
     });
@@ -58,9 +102,9 @@ const Sidebar: React.FC = () => {
     { label: 'Profile', path: '/profile', icon: UserRound },
     { label: 'Skills', path: '/skills', icon: BadgeInfo },
     { label: 'Find Mentors', path: '/mentors', icon: Search },
-    { label: 'Requests', path: '/requests', icon: MessageSquareText },
-    { label: 'Chat', path: '/chat', icon: MessageSquareText },
-    { label: 'Meetings', path: '/meetings', icon: Calendar },
+    { label: 'Requests', path: '/requests', icon: MessageSquareText, badge: dashboard?.pendingReceivedRequests || 0 },
+    { label: 'Chat', path: '/chat', icon: MessageSquareText, badge: dashboard?.unreadChats || 0 },
+    { label: 'Meetings', path: '/meetings', icon: Calendar, badge: dashboard?.pendingMeetings || 0 },
     { label: 'Notifications', path: '/notifications', icon: Bell, badge: unreadCount },
   ];
 
@@ -166,6 +210,18 @@ const Sidebar: React.FC = () => {
           onClick={() => setIsOpen(false)}
         />
       )}
+
+      <div className="pointer-events-none fixed right-4 top-4 z-[60] flex w-[min(92vw,24rem)] flex-col gap-3">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="pointer-events-auto rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_18px_40px_rgba(15,23,42,0.18)] backdrop-blur"
+          >
+            <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{toast.message}</p>
+          </div>
+        ))}
+      </div>
     </>
   );
 };

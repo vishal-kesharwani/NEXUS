@@ -18,6 +18,10 @@ public class DashboardResponse {
 
     private long recommendations;
 
+    private long pendingReceivedRequests;
+    private long pendingMeetings;
+    private long unreadChats;
+
     // Analytics metrics
     private long totalMentees;
     private long activeChats;
