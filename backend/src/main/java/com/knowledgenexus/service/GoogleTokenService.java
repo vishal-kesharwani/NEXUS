@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -94,7 +95,17 @@ public class GoogleTokenService {
         form.add("refresh_token", user.getGoogleRefreshToken());
         form.add("grant_type", "refresh_token");
 
-        Map<String, Object> body = postForm(form);
+        Map<String, Object> body;
+        try {
+            body = postForm(form);
+        } catch (HttpClientErrorException ex) {
+            if (isInvalidGrant(ex)) {
+                clearGoogleTokens(user);
+                userRepository.save(user);
+                throw new IllegalStateException("GOOGLE_NOT_CONNECTED");
+            }
+            throw ex;
+        }
 
         String accessToken = (String) body.get("access_token");
         user.setGoogleAccessToken(accessToken);
@@ -118,5 +129,16 @@ public class GoogleTokenService {
 
     private long toLong(Object value) {
         return value instanceof Integer i ? i.longValue() : (Long) value;
+    }
+
+    private boolean isInvalidGrant(HttpClientErrorException ex) {
+        String response = ex.getResponseBodyAsString();
+        return response != null && response.contains("\"invalid_grant\"");
+    }
+
+    private void clearGoogleTokens(User user) {
+        user.setGoogleAccessToken(null);
+        user.setGoogleRefreshToken(null);
+        user.setGoogleTokenExpiry(null);
     }
 }
