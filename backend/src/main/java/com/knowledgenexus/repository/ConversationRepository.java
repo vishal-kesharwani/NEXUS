@@ -20,4 +20,6 @@ public interface ConversationRepository
     );
 
     long countByMentorId(UUID mentorId);
+
+    java.util.Optional<Conversation> findByMentorshipRequestId(UUID mentorshipRequestId);
 }

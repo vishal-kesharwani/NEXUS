@@ -2,9 +2,11 @@ package com.knowledgenexus.service;
 
 import com.knowledgenexus.dto.CreateReviewRequest;
 import com.knowledgenexus.dto.ReviewResponse;
+import com.knowledgenexus.model.Conversation;
 import com.knowledgenexus.model.MentorReview;
 import com.knowledgenexus.model.MentorshipRequest;
 import com.knowledgenexus.model.User;
+import com.knowledgenexus.repository.ConversationRepository;
 import com.knowledgenexus.repository.MentorshipRequestRepository;
 import com.knowledgenexus.repository.ReviewRepository;
 import com.knowledgenexus.repository.UserRepository;
@@ -22,6 +24,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final MentorshipRequestRepository mentorshipRequestRepository;
+    private final ConversationRepository conversationRepository;
     private final UserSkillService userSkillService;
     private final CurrentUserService currentUserService;
     private final NotificationService notificationService;
@@ -37,9 +40,14 @@ public class ReviewService {
         MentorshipRequest mentorshipRequest = null;
         if (request.getMentorshipRequestId() != null) {
             mentorshipRequest = mentorshipRequestRepository.findById(request.getMentorshipRequestId()).orElseThrow();
+            Conversation conversation = conversationRepository.findByMentorshipRequestId(mentorshipRequest.getId())
+                    .orElseThrow(() -> new RuntimeException("You can review only closed mentorships"));
 
             if (!"ACCEPTED".equals(mentorshipRequest.getStatus())) {
                 throw new RuntimeException("You can review only accepted mentorships");
+            }
+            if (!"CLOSED".equals(conversation.getStatus())) {
+                throw new RuntimeException("You can review only closed mentorships");
             }
             if (!mentorshipRequest.getMentor().getId().equals(mentor.getId()) ||
                     !mentorshipRequest.getMentee().getId().equals(reviewer.getId())) {

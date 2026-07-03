@@ -20,4 +20,6 @@ public interface MentorshipRequestRepository
 
     long countByMenteeIdAndStatus(UUID menteeId, String status);
 
+    long countByMentorIdAndStatus(UUID mentorId, String status);
+
 }
