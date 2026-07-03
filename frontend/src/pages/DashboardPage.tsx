@@ -1,14 +1,13 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { dashboardService, recommendationService } from '../services/api';
 import {
   ArrowRight,
-  BarChart3,
   BookOpen,
   Send,
   Inbox,
-  Lightbulb,
   Sparkles,
   TrendingUp,
   Users,
@@ -191,10 +190,13 @@ export const DashboardPage: React.FC = () => {
                 <p className="text-sm text-slate-500">Top matches based on your current profile and skills.</p>
               </div>
             </div>
-            <button className="hidden items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:inline-flex">
+            <Link
+              to="/mentors"
+              className="hidden items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 sm:inline-flex"
+            >
               View all
               <ArrowRight size={16} />
-            </button>
+            </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {recommendations.slice(0, 3).map((mentor) => (
