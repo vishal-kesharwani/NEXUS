@@ -31,5 +31,7 @@ Thumbs.db
 backend/.env
 frontend/.env
 application-local.yaml
+!.env.example
+.m2/
 
 backend/src/main/resources/application.yaml

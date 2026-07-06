@@ -186,48 +186,84 @@ knowledge-nexus/
 ## application.yml
 
 ```yaml
-server:
-  port: 8080
-
 spring:
   application:
     name: knowledge-nexus
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/knowledge_nexus
-    username: postgres
-    password: your_password
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/knowledge_nexus}
+    username: ${SPRING_DATASOURCE_USERNAME:nexus}
+    password: ${SPRING_DATASOURCE_PASSWORD:change-me-local}
     driver-class-name: org.postgresql.Driver
 
+server:
+  port: ${SERVER_PORT:8080}
+
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: validate
     show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
 
   flyway:
     enabled: true
     locations: classpath:db/migration
 
 app:
-  frontend-url: http://localhost:5173
-
   cors:
     allowed-origins:
       - http://localhost:5173
+      - http://127.0.0.1:5173
 
-  jwt:
-    secret: CHANGE_ME
-    expiration-ms: 86400000
+  frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
 
 google:
-  client-id: YOUR_CLIENT_ID
-  client-secret: YOUR_CLIENT_SECRET
+  client-id: ${GOOGLE_CLIENT_ID:change-me-client-id}
+  client-secret: ${GOOGLE_CLIENT_SECRET:change-me-client-secret}
   redirect-uri: http://localhost:8080/api/google/oauth/callback
 
+jwt:
+  secret: ${JWT_SECRET:change-me-jwt-secret}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
-OPENROUTER_API_KEY: sk-or-v1-8c41............................
-OPENROUTER_MODEL: openrouter/free
+OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:}
+OPENROUTER_MODEL: ${OPENROUTER_MODEL:openrouter/free}
 ```
+
+---
+
+## docker-compose.yml
+
+```yaml
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-knowledge_nexus}
+      POSTGRES_USER: ${POSTGRES_USER:-nexus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local}
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/knowledge_nexus}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-nexus}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-change-me-local}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-change-me-client-id}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-change-me-client-secret}
+      JWT_SECRET: ${JWT_SECRET:-change-me-jwt-secret}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+```
+
+---
+
+## Environment File
+
+Use [`.env.example`](/D:/nexus/NEXUS/.env.example) as the local template. Copy it to `.env` and fill real values only on your machine.
 
 ---
 
@@ -263,6 +299,19 @@ npm install
 
 npm run dev
 ```
+
+### Docker
+
+```bash
+docker compose up --build
+```
+
+This starts:
+
+* PostgreSQL on `localhost:5432`
+* Backend on `localhost:8080`
+
+The backend image uses Java 21, and runtime config is wired through environment variables in [`docker-compose.yml`](/D:/nexus/NEXUS/docker-compose.yml).
 
 ---
 
