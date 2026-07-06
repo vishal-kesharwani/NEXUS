@@ -185,6 +185,8 @@ knowledge-nexus/
 
 ## application.yml
 
+Use [`backend/src/main/resources/application.example.yaml`](/D:/nexus/NEXUS/backend/src/main/resources/application.example.yaml) as the tracked template. Keep your real `application.yaml` local-only.
+
 ```yaml
 spring:
   application:
