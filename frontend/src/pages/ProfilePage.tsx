@@ -7,7 +7,7 @@ import { User as UserIcon } from 'lucide-react';
 import type { UpdateProfileRequest, User } from '../types';
 
 export const ProfilePage: React.FC = () => {
-  const { user, setUser } = useAuth();
+  const { user, setUser, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -28,12 +28,6 @@ export const ProfilePage: React.FC = () => {
     enabled: isEditing,
   });
 
-  // Fetch current user data
-  const { data: userData, isLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () => authService.getCurrentUser().then((res) => res.data),
-  });
-
   // Update profile mutation
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProfileRequest) =>
@@ -46,21 +40,21 @@ export const ProfilePage: React.FC = () => {
 
   // Initialize form with user data
   useEffect(() => {
-    if (userData) {
+    if (user) {
       setFormData({
-        firstName: userData.firstName || '',
-        lastName: userData.lastName || '',
-        headline: userData.headline || '',
-        bio: userData.bio || '',
-        experience: userData.experience || '',
-        role: userData.role || '',
-        company: userData.company || '',
-        location: userData.location || '',
-        linkedIn: userData.linkedIn || '',
-        github: userData.github || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        headline: user.headline || '',
+        bio: user.bio || '',
+        experience: user.experience || '',
+        role: user.role || '',
+        company: user.company || '',
+        location: user.location || '',
+        linkedIn: user.linkedIn || '',
+        github: user.github || '',
       });
     }
-  }, [userData]);
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -75,9 +69,9 @@ export const ProfilePage: React.FC = () => {
     });
   };
 
-  const displayData = userData || user;
+  const displayData = user;
 
-  if (isLoading) {
+  if (authLoading) {
     return (
       <MainLayout>
         <div className="text-center py-12">

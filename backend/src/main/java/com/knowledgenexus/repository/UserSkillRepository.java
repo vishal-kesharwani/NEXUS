@@ -12,6 +12,13 @@ import java.util.UUID;
 public interface UserSkillRepository
         extends JpaRepository<UserSkill, UUID> {
 
+    @Query("""
+        SELECT DISTINCT us
+        FROM UserSkill us
+        JOIN FETCH us.user
+        JOIN FETCH us.skill
+        WHERE us.user = :user
+    """)
     List<UserSkill> findByUser(User user);
 
     java.util.Optional<UserSkill> findByUserIdAndSkillId(UUID userId, UUID skillId);
@@ -27,6 +34,13 @@ public interface UserSkillRepository
             @Param("skillName") String skillName
     );
 
+    @Query("""
+        SELECT DISTINCT us
+        FROM UserSkill us
+        JOIN FETCH us.user
+        JOIN FETCH us.skill
+        WHERE us.user.id = :userId
+    """)
     List<UserSkill> findByUserId(UUID userId);
 
     List<UserSkill> findByCanMentorTrue();
